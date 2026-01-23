@@ -33,6 +33,59 @@ import CareersPage from './pages/info/CareersPage';
 import PrivacyPage from './pages/info/PrivacyPage';
 import TermsPage from './pages/info/TermsPage';
 
+import { AnimatePresence } from 'framer-motion';
+import { useLocation } from 'react-router-dom';
+import PageTransition from './components/PageTransition';
+
+// Wrapper for animated routes
+const AnimatedElement = ({ children }: { children: React.ReactElement }) => (
+  <PageTransition>{children}</PageTransition>
+);
+
+const MainRoutes = () => {
+  const location = useLocation();
+
+  return (
+    <AnimatePresence mode="wait">
+      <Routes location={location} {...({ key: location.pathname } as any)}>
+        <Route path="/" element={<AnimatedElement><ClientLandingPage /></AnimatedElement>} />
+        <Route path="/empresas" element={<AnimatedElement><CompaniesListPage /></AnimatedElement>} />
+        <Route path="/empresa/:slug" element={<AnimatedElement><CompanyProfilePage /></AnimatedElement>} />
+        <Route path="/auth/register" element={<AnimatedElement><RegisterPage /></AnimatedElement>} />
+        <Route path="/auth/login" element={<AnimatedElement><LoginPage /></AnimatedElement>} />
+        <Route path="/empresa/cadastro" element={<AnimatedElement><CompanyRegistrationPage /></AnimatedElement>} />
+
+        {/* Client Routes */}
+        <Route path="/perfil/cliente" element={<ProtectedRoute userType="client" element={<AnimatedElement><ClientProfilePage /></AnimatedElement>} />} />
+        <Route path="/minhas-mensagens" element={<ProtectedRoute userType="client" element={<AnimatedElement><ClientMessagesPage /></AnimatedElement>} />} />
+        <Route path="/favoritos" element={<ProtectedRoute userType="client" element={<AnimatedElement><FavoritesPage /></AnimatedElement>} />} />
+
+        {/* Company Dashboard Routes - DashboardLayout handles its own outlet, maybe animate layout entry? */}
+        <Route path="/dashboard/empresa" element={<DashboardLayout />}>
+          <Route index element={<Navigate to="perfil" replace />} />
+          <Route path="perfil" element={<AnimatedElement><DashboardPerfilPage /></AnimatedElement>} />
+          <Route path="administradores" element={<AnimatedElement><DashboardAdministradoresPage /></AnimatedElement>} />
+          <Route path="servicos" element={<AnimatedElement><DashboardServicosPage /></AnimatedElement>} />
+          <Route path="portfolio" element={<AnimatedElement><DashboardPortfolioPage /></AnimatedElement>} />
+          <Route path="avaliacoes" element={<AnimatedElement><DashboardAvaliacoesPage /></AnimatedElement>} />
+          <Route path="mensagens" element={<AnimatedElement><DashboardMensagensPage /></AnimatedElement>} />
+          <Route path="configuracoes" element={<AnimatedElement><DashboardConfiguracoesPage /></AnimatedElement>} />
+        </Route>
+
+        {/* Info Pages Routes */}
+        <Route path="/para-empresas" element={<AnimatedElement><ForCompaniesPage /></AnimatedElement>} />
+        <Route path="/para-clientes" element={<AnimatedElement><ForClientsPage /></AnimatedElement>} />
+        <Route path="/ajuda" element={<AnimatedElement><HelpPage /></AnimatedElement>} />
+        <Route path="/contato" element={<AnimatedElement><ContactPage /></AnimatedElement>} />
+        <Route path="/sobre" element={<AnimatedElement><AboutPage /></AnimatedElement>} />
+        <Route path="/carreiras" element={<AnimatedElement><CareersPage /></AnimatedElement>} />
+        <Route path="/privacidade" element={<AnimatedElement><PrivacyPage /></AnimatedElement>} />
+        <Route path="/termos" element={<AnimatedElement><TermsPage /></AnimatedElement>} />
+      </Routes>
+    </AnimatePresence>
+  );
+};
+
 const App = (): React.ReactElement => {
   return (
     <AuthProvider>
@@ -42,41 +95,7 @@ const App = (): React.ReactElement => {
             <div className="flex flex-col min-h-screen">
               <Header />
               <main className="flex-grow">
-                <Routes>
-                  <Route path="/" element={<ClientLandingPage />} />
-                  <Route path="/empresas" element={<CompaniesListPage />} />
-                  <Route path="/empresa/:slug" element={<CompanyProfilePage />} />
-                  <Route path="/auth/register" element={<RegisterPage />} />
-                  <Route path="/auth/login" element={<LoginPage />} />
-                  <Route path="/empresa/cadastro" element={<CompanyRegistrationPage />} />
-                  
-                  {/* Client Routes */}
-                  <Route path="/perfil/cliente" element={<ProtectedRoute userType="client" element={<ClientProfilePage />} />} />
-                  <Route path="/minhas-mensagens" element={<ProtectedRoute userType="client" element={<ClientMessagesPage />} />} />
-                  <Route path="/favoritos" element={<ProtectedRoute userType="client" element={<FavoritesPage />} />} />
-                  
-                  {/* Company Dashboard Routes */}
-                  <Route path="/dashboard/empresa" element={<DashboardLayout />}>
-                    <Route index element={<Navigate to="perfil" replace />} />
-                    <Route path="perfil" element={<DashboardPerfilPage />} />
-                    <Route path="administradores" element={<DashboardAdministradoresPage />} />
-                    <Route path="servicos" element={<DashboardServicosPage />} />
-                    <Route path="portfolio" element={<DashboardPortfolioPage />} />
-                    <Route path="avaliacoes" element={<DashboardAvaliacoesPage />} />
-                    <Route path="mensagens" element={<DashboardMensagensPage />} />
-                    <Route path="configuracoes" element={<DashboardConfiguracoesPage />} />
-                  </Route>
-
-                  {/* Info Pages Routes */}
-                  <Route path="/para-empresas" element={<ForCompaniesPage />} />
-                  <Route path="/para-clientes" element={<ForClientsPage />} />
-                  <Route path="/ajuda" element={<HelpPage />} />
-                  <Route path="/contato" element={<ContactPage />} />
-                  <Route path="/sobre" element={<AboutPage />} />
-                  <Route path="/carreiras" element={<CareersPage />} />
-                  <Route path="/privacidade" element={<PrivacyPage />} />
-                  <Route path="/termos" element={<TermsPage />} />
-                </Routes>
+                <MainRoutes />
               </main>
               <Footer />
             </div>

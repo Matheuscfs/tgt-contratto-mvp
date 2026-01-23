@@ -4,14 +4,14 @@ import { Link } from 'react-router-dom';
 
 const Footer: React.FC = () => {
   return (
-    <footer className="bg-white border-t border-gray-200">
+    <footer className="bg-white border-t-4 border-brand-primary">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
           <div>
             <h3 className="text-sm font-semibold text-gray-500 tracking-wider uppercase">Soluções</h3>
             <ul className="mt-4 space-y-4">
-              <li><Link to="/para-empresas" className="text-base text-gray-500 hover:text-gray-900">Para Empresas</Link></li>
-              <li><Link to="/para-clientes" className="text-base text-gray-500 hover:text-gray-900">Para Clientes</Link></li>
+              <li><Link to="/para-empresas" className="text-base text-gray-500 hover:text-brand-primary">Para Empresas</Link></li>
+              <li><Link to="/para-clientes" className="text-base text-gray-500 hover:text-brand-primary">Para Clientes</Link></li>
             </ul>
           </div>
           <div>

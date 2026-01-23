@@ -7,6 +7,8 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   isLoading?: boolean;
 }
 
+import { motion } from 'framer-motion';
+
 const Button: React.FC<ButtonProps> = ({
   children,
   className,
@@ -16,11 +18,11 @@ const Button: React.FC<ButtonProps> = ({
   disabled,
   ...props
 }) => {
-  const baseClasses = "inline-flex items-center justify-center border border-transparent font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed";
+  const baseClasses = "inline-flex items-center justify-center border border-transparent font-medium rounded-sharp shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed uppercase tracking-wider";
 
   const variantClasses = {
-    primary: 'text-white bg-primary-600 hover:bg-primary-700 focus:ring-primary-500',
-    secondary: 'text-primary-700 bg-primary-100 hover:bg-primary-200 focus:ring-primary-500',
+    primary: 'text-white bg-brand-primary hover:bg-brand-primary/90 focus:ring-brand-primary',
+    secondary: 'text-brand-secondary bg-brand-primary/10 hover:bg-brand-primary/20 focus:ring-brand-primary',
     danger: 'text-white bg-red-600 hover:bg-red-700 focus:ring-red-500',
   };
 
@@ -31,10 +33,13 @@ const Button: React.FC<ButtonProps> = ({
   };
 
   return (
-    <button
+    <motion.button
       className={`${baseClasses} ${sizeClasses[size]} ${variantClasses[variant]} ${className || ''}`}
       disabled={disabled || isLoading}
-      {...props}
+      whileHover={{ scale: 1.02 }}
+      whileTap={{ scale: 0.98 }}
+      transition={{ type: "spring", stiffness: 400, damping: 17 }}
+      {...(props as any)}
     >
       {isLoading && (
         <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -43,7 +48,7 @@ const Button: React.FC<ButtonProps> = ({
         </svg>
       )}
       {children}
-    </button>
+    </motion.button>
   );
 };
 

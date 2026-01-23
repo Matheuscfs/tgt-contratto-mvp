@@ -41,7 +41,7 @@ const Toast: React.FC<ToastProps> = ({ toast, removeToast }) => {
     <div className={`${baseClasses} ${typeClasses[type]} ${visible ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-full'}`}>
       <Icon />
       <p className="flex-1 text-sm font-medium">{message}</p>
-      <button onClick={() => removeToast(id)} className="p-1 rounded-full hover:bg-white/50">
+      <button onClick={() => removeToast(id)} className="p-1 rounded-full hover:bg-white/50" aria-label="Fechar notificação">
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
       </button>
     </div>

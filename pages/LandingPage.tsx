@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import CompanyCard from '../components/CompanyCard';
+import Section from '../components/ui/Section';
+import Skeleton from '../components/ui/Skeleton';
 import { MOCK_COMPANIES, CATEGORIES } from '../constants';
 import { Company } from '../types';
 
@@ -11,9 +13,16 @@ const CompaniesListPage: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState(searchParams.get('cat') || 'all');
   const [sortBy, setSortBy] = useState('rating');
 
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => {
     setSearchTerm(searchParams.get('q') || '');
     setSelectedCategory(searchParams.get('cat') || 'all');
+
+    // Simulate loading
+    setLoading(true);
+    const timer = setTimeout(() => setLoading(false), 800);
+    return () => clearTimeout(timer);
   }, [searchParams]);
 
   const filteredAndSortedCompanies = MOCK_COMPANIES
@@ -45,7 +54,7 @@ const CompaniesListPage: React.FC = () => {
             Explore uma seleção curada de empresas e serviços na sua região. Qualidade e confiança ao seu alcance.
           </p>
         </div>
-        
+
         <div className="mt-12 p-6 bg-white rounded-lg shadow-md">
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 items-end">
             <div className="md:col-span-3 lg:col-span-2">
@@ -87,16 +96,41 @@ const CompaniesListPage: React.FC = () => {
         </div>
 
         <div className="mt-10">
-          {filteredAndSortedCompanies.length > 0 ? (
+          {loading ? (
+            // Skeleton grid for loading state
+            <div className="container mx-auto px-4 py-8">
+              {/* Assuming Section and Skeleton components are defined or imported */}
+              {/* <Section variant="narrow" className="mb-8">
+                    <Skeleton height={40} width={200} className="mb-4" />
+                    <Skeleton height={20} width={300} />
+                </Section> */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {[1, 2, 3, 4, 5, 6].map((i) => (
+                  <div key={i} className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm">
+                    {/* Replace with actual Skeleton components if available */}
+                    <div className="h-48 bg-gray-200 rounded-lg mb-4 animate-pulse"></div>
+                    <div className="h-5 bg-gray-200 w-3/4 mb-2 animate-pulse"></div>
+                    <div className="h-4 bg-gray-200 w-1/2 mb-4 animate-pulse"></div>
+                    <div className="flex gap-1">
+                      <div className="h-4 w-4 rounded-full bg-gray-200 animate-pulse"></div>
+                      <div className="h-4 w-4 rounded-full bg-gray-200 animate-pulse"></div>
+                      <div className="h-4 w-4 rounded-full bg-gray-200 animate-pulse"></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : filteredAndSortedCompanies.length > 0 ? (
             <div className="grid gap-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {filteredAndSortedCompanies.map(company => (
                 <CompanyCard key={company.id} company={company} />
               ))}
             </div>
-           ) : (
+          ) : (
+            // No results found message
             <div className="text-center py-16 px-4 bg-white rounded-lg shadow-md">
-                <h3 className="text-xl font-semibold text-gray-800">Nenhum resultado encontrado</h3>
-                <p className="text-gray-500 mt-2">Tente ajustar seus filtros de busca ou procurar por outro termo.</p>
+              <h3 className="text-xl font-semibold text-gray-800">Nenhum resultado encontrado</h3>
+              <p className="text-gray-500 mt-2">Tente ajustar seus filtros de busca ou procurar por outro termo.</p>
             </div>
           )}
         </div>
