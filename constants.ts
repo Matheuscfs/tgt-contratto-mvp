@@ -19,8 +19,8 @@ export const MOCK_COMPANIES: Company[] = [
     companyName: 'Adega Vinho Sul',
     legalName: 'Adega Vinho Sul Comercio Ltda',
     cnpj: '12.345.678/0001-90',
-    logo: 'https://picsum.photos/seed/adega/400/400',
-    coverImage: 'https://picsum.photos/seed/adegacover/1200/400',
+    logo: 'https://images.unsplash.com/photo-1599388147551-73934d4d1373?w=400&h=400&fit=crop',
+    coverImage: 'https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?auto=format&fit=crop&w=1200&q=80',
     category: 'Vinhos',
     rating: 4.8,
     reviewCount: 125,
@@ -44,24 +44,24 @@ export const MOCK_COMPANIES: Company[] = [
       { id: 's3', title: 'Venda de Vinhos Raros', description: 'Acesso a rótulos exclusivos e de safras antigas.' }
     ],
     portfolio: [
-      { id: 'p1', type: 'image', url: 'https://picsum.photos/seed/porto1/800/600', caption: 'Nossa fachada' },
-      { id: 'p2', type: 'image', url: 'https://picsum.photos/seed/porto2/800/600', caption: 'Seleção de vinhos tintos' },
-      { id: 'p3', type: 'image', url: 'https://picsum.photos/seed/porto3/800/600', caption: 'Evento de degustação' },
-      { id: 'p4', type: 'image', url: 'https://picsum.photos/seed/porto4/800/600', caption: 'Interior da loja' },
+      { id: 'p1', type: 'image', url: 'https://images.unsplash.com/photo-1568213816046-0ee1c42bd559?w=800&h=600&fit=crop', caption: 'Nossa fachada' },
+      { id: 'p2', type: 'image', url: 'https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?w=800&h=600&fit=crop', caption: 'Seleção de vinhos tintos' },
+      { id: 'p3', type: 'image', url: 'https://images.unsplash.com/photo-1528823872057-9c0182e68c43?w=800&h=600&fit=crop', caption: 'Evento de degustação' },
+      { id: 'p4', type: 'image', url: 'https://images.unsplash.com/photo-1464639351491-a172a2aa9919?w=800&h=600&fit=crop', caption: 'Interior da loja' },
     ],
     reviews: [
-        { id: 'r1', author: 'Carlos Pereira', avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026704d', rating: 5, comment: 'Atendimento excelente e vinhos de alta qualidade!', date: '2 dias atrás'},
-        { id: 'r2', author: 'Ana Julia', avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026705d', rating: 4, comment: 'Ótima variedade, mas os preços são um pouco altos.', date: '1 semana atrás'},
+      { id: 'r1', author: 'Carlos Pereira', avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&h=150&fit=crop', rating: 5, comment: 'Atendimento excelente e vinhos de alta qualidade!', date: '2 dias atrás' },
+      { id: 'r2', author: 'Ana Julia', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop', rating: 4, comment: 'Ótima variedade, mas os preços são um pouco altos.', date: '1 semana atrás' },
     ]
   },
-   {
+  {
     id: '2',
     slug: 'tech-solutions',
     companyName: 'Tech Solutions',
     legalName: 'Soluções em Tecnologia Ltda',
     cnpj: '98.765.432/0001-10',
-    logo: 'https://picsum.photos/seed/tech/400/400',
-    coverImage: 'https://picsum.photos/seed/techcover/1200/400',
+    logo: 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=400&h=400&fit=crop',
+    coverImage: 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1200&q=80',
     category: 'Tecnologia',
     rating: 4.5,
     reviewCount: 88,
@@ -84,11 +84,11 @@ export const MOCK_COMPANIES: Company[] = [
       { id: 's2', title: 'Desenvolvimento Mobile', description: 'Aplicativos nativos para iOS e Android.', price: 15000.00 },
     ],
     portfolio: [
-       { id: 'p1', type: 'image', url: 'https://picsum.photos/seed/techporto1/800/600', caption: 'Nosso escritório' },
-       { id: 'p2', type: 'image', url: 'https://picsum.photos/seed/techporto2/800/600', caption: 'Equipe em ação' },
+      { id: 'p1', type: 'image', url: 'https://images.unsplash.com/photo-1497215728101-856f4ea42174?w=800&h=600&fit=crop', caption: 'Nosso escritório' },
+      { id: 'p2', type: 'image', url: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=800&h=600&fit=crop', caption: 'Equipe em ação' },
     ],
-     reviews: [
-        { id: 'r1', author: 'Mariana Costa', avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026706d', rating: 5, comment: 'Projeto entregue no prazo com qualidade impecável. Recomendo!', date: '1 mês atrás'},
+    reviews: [
+      { id: 'r1', author: 'Mariana Costa', avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop', rating: 5, comment: 'Projeto entregue no prazo com qualidade impecável. Recomendo!', date: '1 mês atrás' },
     ]
   },
 ];

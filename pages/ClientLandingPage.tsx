@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import Button from '../components/ui/Button';
 import CompanyCard from '../components/CompanyCard';
-import { MOCK_COMPANIES } from '../constants';
+import { useMockData } from '../contexts/MockContext';
 import QuickSearch from '../components/QuickSearch';
 import HeroSection from '../components/HeroSection';
 import OptimizedImage from '../components/ui/OptimizedImage';
@@ -15,7 +15,7 @@ const ConnectIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-1
 
 
 const ClientLandingPage: React.FC = () => {
-  const featuredCompanies = MOCK_COMPANIES.slice(0, 2);
+  const { companies: featuredCompanies } = useMockData();
 
   return (
     <div className="bg-white text-gray-800">
@@ -76,7 +76,7 @@ const ClientLandingPage: React.FC = () => {
         <div className="container mx-auto px-4">
           <h2 className="text-3xl font-bold text-center mb-12">Empresas em Destaque</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 gap-8 max-w-4xl mx-auto">
-            {featuredCompanies.map(company => (
+            {featuredCompanies.slice(0, 2).map(company => (
               <CompanyCard key={company.id} company={company} />
             ))}
           </div>

@@ -3,15 +3,18 @@ import { useSearchParams } from 'react-router-dom';
 import CompanyCard from '../components/CompanyCard';
 import Section from '../components/ui/Section';
 import Skeleton from '../components/ui/Skeleton';
-import { MOCK_COMPANIES, CATEGORIES } from '../constants';
+import { CATEGORIES } from '../constants';
 import { Company } from '../types';
+import { useMockData } from '../contexts/MockContext';
 
 const CompaniesListPage: React.FC = () => {
   const [searchParams] = useSearchParams();
+  const { companies, loading: contextLoading } = useMockData();
 
   const [searchTerm, setSearchTerm] = useState(searchParams.get('q') || '');
   const [selectedCategory, setSelectedCategory] = useState(searchParams.get('cat') || 'all');
   const [sortBy, setSortBy] = useState('rating');
+  const [priceRange, setPriceRange] = useState<'all' | 'low' | 'mid' | 'high'>('all');
 
   const [loading, setLoading] = useState(true);
 
@@ -25,7 +28,7 @@ const CompaniesListPage: React.FC = () => {
     return () => clearTimeout(timer);
   }, [searchParams]);
 
-  const filteredAndSortedCompanies = MOCK_COMPANIES
+  const filteredAndSortedCompanies = companies
     .filter(company =>
       company.companyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       company.services.some(service => service.title.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -33,6 +36,14 @@ const CompaniesListPage: React.FC = () => {
     .filter(company =>
       selectedCategory === 'all' || company.category === selectedCategory
     )
+    .filter(company => {
+      if (priceRange === 'all') return true;
+      const minPrice = company.services.length > 0 && company.services[0].price ? company.services[0].price : 0;
+      if (priceRange === 'low') return minPrice < 100;
+      if (priceRange === 'mid') return minPrice >= 100 && minPrice < 300;
+      if (priceRange === 'high') return minPrice >= 300;
+      return true;
+    })
     .sort((a, b) => {
       if (sortBy === 'rating') {
         return b.rating - a.rating;
@@ -56,8 +67,8 @@ const CompaniesListPage: React.FC = () => {
         </div>
 
         <div className="mt-12 p-6 bg-white rounded-lg shadow-md">
-          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 items-end">
-            <div className="md:col-span-3 lg:col-span-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+            <div>
               <label htmlFor="search" className="block text-sm font-medium text-gray-700">Buscar por nome ou serviço</label>
               <input
                 type="text"
@@ -81,6 +92,20 @@ const CompaniesListPage: React.FC = () => {
               </select>
             </div>
             <div>
+              <label htmlFor="price" className="block text-sm font-medium text-gray-700">Faixa de Preço</label>
+              <select
+                id="price"
+                value={priceRange}
+                onChange={(e) => setPriceRange(e.target.value as any)}
+                className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md"
+              >
+                <option value="all">Todos os Preços</option>
+                <option value="low">Até R$ 100</option>
+                <option value="mid">R$ 100 - R$ 300</option>
+                <option value="high">Acima de R$ 300</option>
+              </select>
+            </div>
+            <div>
               <label htmlFor="sort" className="block text-sm font-medium text-gray-700">Ordenar por</label>
               <select
                 id="sort"
@@ -95,19 +120,28 @@ const CompaniesListPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="mt-10">
-          {loading ? (
-            // Skeleton grid for loading state
+        {/* Results Header */}
+        <div className="mt-8 flex justify-between items-center">
+          <p className="text-gray-600">
+            Mostrando <strong className="text-brand-primary">{filteredAndSortedCompanies.length}</strong> de <strong>{companies.length}</strong> resultados
+            {searchTerm && ` para "${searchTerm}"`}
+          </p>
+          {searchTerm && (
+            <button
+              onClick={() => setSearchTerm('')}
+              className="text-sm text-brand-primary hover:underline"
+            >
+              Limpar busca
+            </button>
+          )}
+        </div>
+
+        <div className="mt-6">
+          {loading || contextLoading ? (
             <div className="container mx-auto px-4 py-8">
-              {/* Assuming Section and Skeleton components are defined or imported */}
-              {/* <Section variant="narrow" className="mb-8">
-                    <Skeleton height={40} width={200} className="mb-4" />
-                    <Skeleton height={20} width={300} />
-                </Section> */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {[1, 2, 3, 4, 5, 6].map((i) => (
                   <div key={i} className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm">
-                    {/* Replace with actual Skeleton components if available */}
                     <div className="h-48 bg-gray-200 rounded-lg mb-4 animate-pulse"></div>
                     <div className="h-5 bg-gray-200 w-3/4 mb-2 animate-pulse"></div>
                     <div className="h-4 bg-gray-200 w-1/2 mb-4 animate-pulse"></div>
@@ -127,10 +161,27 @@ const CompaniesListPage: React.FC = () => {
               ))}
             </div>
           ) : (
-            // No results found message
             <div className="text-center py-16 px-4 bg-white rounded-lg shadow-md">
-              <h3 className="text-xl font-semibold text-gray-800">Nenhum resultado encontrado</h3>
-              <p className="text-gray-500 mt-2">Tente ajustar seus filtros de busca ou procurar por outro termo.</p>
+              <svg className="mx-auto h-16 w-16 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <h3 className="mt-4 text-xl font-semibold text-gray-800">Nenhum resultado encontrado</h3>
+              <p className="text-gray-500 mt-2 mb-6">Tente ajustar seus filtros de busca ou procurar por outro termo.</p>
+
+              <div className="mt-6">
+                <p className="text-sm font-medium text-gray-700 mb-3">Categorias Populares:</p>
+                <div className="flex flex-wrap gap-2 justify-center">
+                  {CATEGORIES.slice(0, 5).map(cat => (
+                    <button
+                      key={cat}
+                      onClick={() => { setSelectedCategory(cat); setSearchTerm(''); }}
+                      className="px-4 py-2 bg-gray-100 hover:bg-brand-primary hover:text-white rounded-md text-sm transition-colors"
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
         </div>

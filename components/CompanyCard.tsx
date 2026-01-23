@@ -4,6 +4,7 @@ import { Company } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { useFavorites } from '../contexts/FavoritesContext';
 import OptimizedImage from './ui/OptimizedImage';
+import Badge from './ui/Badge';
 
 
 interface CompanyCardProps {
@@ -38,6 +39,14 @@ const CompanyCard: React.FC<CompanyCardProps> = ({ company }) => {
                 <div className="relative w-full h-48 bg-gray-200">
                     <OptimizedImage src={company.coverImage} alt={company.companyName} className="w-full h-full object-cover" />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+
+                    {/* Availability Badge */}
+                    <div className="absolute top-2 left-2">
+                        <Badge variant="success">
+                            Disponível Hoje
+                        </Badge>
+                    </div>
+
                     <div className="absolute bottom-2 left-2 w-16 h-16 rounded-full border-2 border-white bg-white shadow-md overflow-hidden">
                         <OptimizedImage src={company.logo} alt={`${company.companyName} logo`} className="w-full h-full object-cover" />
                     </div>
@@ -55,11 +64,19 @@ const CompanyCard: React.FC<CompanyCardProps> = ({ company }) => {
                         </div>
                         <p className="ml-2 text-sm text-gray-500">{company.rating.toFixed(1)} ({company.reviewCount} avaliações)</p>
                     </div>
-                    <div className="mt-3 flex items-center text-sm text-gray-500">
-                        <svg className="flex-shrink-0 mr-1.5 h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
-                        </svg>
-                        <span>{company.address.city}, {company.address.state}</span>
+                    <div className="mt-3 flex items-center justify-between text-sm">
+                        <div className="flex items-center text-gray-500">
+                            <svg className="flex-shrink-0 mr-1.5 h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                            </svg>
+                            <span>{company.address.city}, {company.address.state}</span>
+                        </div>
+                        {company.services.length > 0 && company.services[0].price && (
+                            <div className="flex items-center font-semibold text-brand-primary">
+                                <span className="text-xs text-gray-500 mr-1">A partir de</span>
+                                <span>R$ {company.services[0].price.toFixed(0)}</span>
+                            </div>
+                        )}
                     </div>
                 </div>
             </Link>

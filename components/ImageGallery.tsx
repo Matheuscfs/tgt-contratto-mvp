@@ -38,25 +38,7 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({ items }) => {
     <>
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {items.map((item) => (
-          <div
-            key={item.id}
-            className="group relative aspect-square rounded-lg overflow-hidden cursor-pointer focus:outline-none focus:ring-4 focus:ring-brand-primary/50"
-            onClick={() => openLightbox(item.url)}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                openLightbox(item.url);
-              }
-            }}
-            aria-label={`Ver imagem: ${item.caption}`}
-          >
-            <img src={item.url} alt={item.caption} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-            <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-opacity duration-300 flex items-end p-2" aria-hidden="true">
-              <p className="text-white text-sm opacity-0 group-hover:opacity-100 transition-opacity">{item.caption}</p>
-            </div>
-          </div>
+          <GalleryItem key={item.id} item={item} openLightbox={openLightbox} />
         ))}
       </div>
 
@@ -85,6 +67,48 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({ items }) => {
         </div>
       )}
     </>
+  );
+};
+
+// Subcomponent to handle individual image state
+const GalleryItem: React.FC<{ item: PortfolioItem; openLightbox: (url: string) => void }> = ({ item, openLightbox }) => {
+  const [imageError, setImageError] = useState(false);
+
+  return (
+    <div
+      className={`group relative aspect-square rounded-lg overflow-hidden cursor-pointer focus:outline-none focus:ring-4 focus:ring-brand-primary/50 ${imageError ? 'bg-gray-100 border-2 border-dashed border-gray-300' : ''}`}
+      onClick={() => !imageError && openLightbox(item.url)}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if ((e.key === 'Enter' || e.key === ' ') && !imageError) {
+          e.preventDefault();
+          openLightbox(item.url);
+        }
+      }}
+      aria-label={`Ver imagem: ${item.caption}`}
+    >
+      {!imageError ? (
+        <>
+          <img
+            src={item.url}
+            alt={item.caption}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            onError={() => setImageError(true)}
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-brand-secondary/90 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4" aria-hidden="true">
+            <p className="text-white font-medium transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300">{item.caption}</p>
+          </div>
+        </>
+      ) : (
+        <div className="w-full h-full flex flex-col items-center justify-center text-gray-400 p-2">
+          <svg className="w-8 h-8 mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+          <span className="text-xs text-center font-medium">Imagem indisponível</span>
+        </div>
+      )}
+    </div>
   );
 };
 

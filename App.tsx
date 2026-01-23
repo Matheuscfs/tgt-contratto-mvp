@@ -9,6 +9,7 @@ import CompanyProfilePage from './pages/CompanyProfilePage';
 import RegisterPage from './pages/RegisterPage';
 import LoginPage from './pages/LoginPage';
 import DashboardLayout from './components/layout/DashboardLayout';
+import DashboardOverviewPage from './pages/dashboard/DashboardOverviewPage';
 import DashboardPerfilPage from './pages/dashboard/DashboardPerfilPage';
 import DashboardServicosPage from './pages/dashboard/DashboardServicosPage';
 import DashboardPortfolioPage from './pages/dashboard/DashboardPortfolioPage';
@@ -16,12 +17,15 @@ import DashboardMensagensPage from './pages/dashboard/DashboardMensagensPage';
 import DashboardConfiguracoesPage from './pages/dashboard/DashboardConfiguracoesPage';
 import DashboardAdministradoresPage from './pages/dashboard/DashboardAdministradoresPage';
 import DashboardAvaliacoesPage from './pages/dashboard/DashboardAvaliacoesPage';
+import DashboardAgendamentosPage from './pages/dashboard/DashboardAgendamentosPage';
+import BookingConfirmationPage from './pages/BookingConfirmationPage';
 import ClientProfilePage from './pages/client/ClientProfilePage';
 import ClientMessagesPage from './pages/client/ClientMessagesPage';
 import FavoritesPage from './pages/client/FavoritesPage';
 import { ToastProvider } from './contexts/ToastContext';
 import CompanyRegistrationPage from './pages/CompanyRegistrationPage';
 import { FavoritesProvider } from './contexts/FavoritesContext';
+import { MockProvider } from './contexts/MockContext';
 
 // Info Pages
 import ForCompaniesPage from './pages/info/ForCompaniesPage';
@@ -54,6 +58,7 @@ const MainRoutes = () => {
         <Route path="/auth/register" element={<AnimatedElement><RegisterPage /></AnimatedElement>} />
         <Route path="/auth/login" element={<AnimatedElement><LoginPage /></AnimatedElement>} />
         <Route path="/empresa/cadastro" element={<AnimatedElement><CompanyRegistrationPage /></AnimatedElement>} />
+        <Route path="/agendamento/confirmacao" element={<AnimatedElement><BookingConfirmationPage /></AnimatedElement>} />
 
         {/* Client Routes */}
         <Route path="/perfil/cliente" element={<ProtectedRoute userType="client" element={<AnimatedElement><ClientProfilePage /></AnimatedElement>} />} />
@@ -62,12 +67,13 @@ const MainRoutes = () => {
 
         {/* Company Dashboard Routes - DashboardLayout handles its own outlet, maybe animate layout entry? */}
         <Route path="/dashboard/empresa" element={<DashboardLayout />}>
-          <Route index element={<Navigate to="perfil" replace />} />
+          <Route index element={<AnimatedElement><DashboardOverviewPage /></AnimatedElement>} />
           <Route path="perfil" element={<AnimatedElement><DashboardPerfilPage /></AnimatedElement>} />
           <Route path="administradores" element={<AnimatedElement><DashboardAdministradoresPage /></AnimatedElement>} />
           <Route path="servicos" element={<AnimatedElement><DashboardServicosPage /></AnimatedElement>} />
           <Route path="portfolio" element={<AnimatedElement><DashboardPortfolioPage /></AnimatedElement>} />
           <Route path="avaliacoes" element={<AnimatedElement><DashboardAvaliacoesPage /></AnimatedElement>} />
+          <Route path="agendamentos" element={<AnimatedElement><DashboardAgendamentosPage /></AnimatedElement>} />
           <Route path="mensagens" element={<AnimatedElement><DashboardMensagensPage /></AnimatedElement>} />
           <Route path="configuracoes" element={<AnimatedElement><DashboardConfiguracoesPage /></AnimatedElement>} />
         </Route>
@@ -89,19 +95,21 @@ const MainRoutes = () => {
 const App = (): React.ReactElement => {
   return (
     <AuthProvider>
-      <FavoritesProvider>
-        <ToastProvider>
-          <HashRouter>
-            <div className="flex flex-col min-h-screen">
-              <Header />
-              <main className="flex-grow">
-                <MainRoutes />
-              </main>
-              <Footer />
-            </div>
-          </HashRouter>
-        </ToastProvider>
-      </FavoritesProvider>
+      <MockProvider>
+        <FavoritesProvider>
+          <ToastProvider>
+            <HashRouter>
+              <div className="flex flex-col min-h-screen">
+                <Header />
+                <main className="flex-grow">
+                  <MainRoutes />
+                </main>
+                <Footer />
+              </div>
+            </HashRouter>
+          </ToastProvider>
+        </FavoritesProvider>
+      </MockProvider>
     </AuthProvider>
   );
 };
