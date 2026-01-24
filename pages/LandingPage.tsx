@@ -1,33 +1,77 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import CompanyCard from '../components/CompanyCard';
-import Section from '../components/ui/Section';
-import Skeleton from '../components/ui/Skeleton';
 import { CATEGORIES } from '../constants';
 import { Company } from '../types';
-import { useMockData } from '../contexts/MockContext';
+import { supabase } from '../lib/supabase';
 
 const CompaniesListPage: React.FC = () => {
   const [searchParams] = useSearchParams();
-  const { companies, loading: contextLoading } = useMockData();
-
+  const [companies, setCompanies] = useState<Company[]>([]);
   const [searchTerm, setSearchTerm] = useState(searchParams.get('q') || '');
   const [selectedCategory, setSelectedCategory] = useState(searchParams.get('cat') || 'all');
   const [sortBy, setSortBy] = useState('rating');
   const [priceRange, setPriceRange] = useState<'all' | 'low' | 'mid' | 'high'>('all');
-
   const [loading, setLoading] = useState(true);
 
+  // Initial Fetch from Supabase
+  useEffect(() => {
+    const fetchCompanies = async () => {
+      setLoading(true);
+      try {
+        // Fetch ACTIVE companies only
+        const { data, error } = await supabase
+          .from('companies')
+          // .select('*, services(*)') // Ideally join, but for MVP flat fetch + separate logic or basic select
+          // Supabase join:
+          .select(`
+            *,
+            services (*)
+          `)
+          .eq('status', 'active');
+
+        if (error) throw error;
+
+        // Map to UI types
+        const mappedCompanies: Company[] = (data || []).map((c: any) => ({
+          id: c.id,
+          slug: c.slug,
+          companyName: c.company_name,
+          legalName: c.legal_name,
+          cnpj: c.cnpj,
+          logo: c.logo_url || 'https://via.placeholder.com/150',
+          coverImage: c.cover_image_url || 'https://via.placeholder.com/1200x400',
+          category: c.category,
+          rating: 5.0, // Should be avg from reviews
+          reviewCount: 0,
+          description: c.description,
+          address: c.address,
+          phone: c.phone,
+          email: c.email,
+          website: c.website,
+          services: c.services || [],
+          portfolio: [],
+          reviews: []
+        }));
+
+        setCompanies(mappedCompanies);
+      } catch (err) {
+        console.error("Error fetching companies:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCompanies();
+  }, []);
+
+  // Update Filters based on URL
   useEffect(() => {
     setSearchTerm(searchParams.get('q') || '');
     setSelectedCategory(searchParams.get('cat') || 'all');
-
-    // Simulate loading
-    setLoading(true);
-    const timer = setTimeout(() => setLoading(false), 800);
-    return () => clearTimeout(timer);
   }, [searchParams]);
 
+  // Client-side Filtering
   const filteredAndSortedCompanies = companies
     .filter(company =>
       company.companyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -55,7 +99,7 @@ const CompaniesListPage: React.FC = () => {
     });
 
   return (
-    <div className="bg-gray-50">
+    <div className="bg-gray-50 min-h-screen">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="text-center">
           <h1 className="text-4xl font-extrabold text-gray-900 sm:text-5xl md:text-6xl">
@@ -137,7 +181,7 @@ const CompaniesListPage: React.FC = () => {
         </div>
 
         <div className="mt-6">
-          {loading || contextLoading ? (
+          {loading ? (
             <div className="container mx-auto px-4 py-8">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {[1, 2, 3, 4, 5, 6].map((i) => (
