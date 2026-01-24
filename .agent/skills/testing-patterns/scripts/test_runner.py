@@ -16,12 +16,25 @@ import sys
 import json
 from pathlib import Path
 from datetime import datetime
+import os
+import shutil
 
 # Fix Windows console encoding
 try:
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 except:
     pass
+
+
+def resolve_cmd(cmd: list) -> list:
+    """Resolve command for Windows compatibility."""
+    if os.name == 'nt':
+        prog = cmd[0]
+        # Valid executables on Windows need .cmd extension if they are batch files
+        if prog in ['npm', 'npx', 'pnpm', 'yarn']:
+             if not prog.lower().endswith('.cmd'):
+                 cmd[0] = f"{prog}.cmd"
+    return cmd
 
 
 def detect_test_framework(project_path: Path) -> dict:
@@ -47,9 +60,10 @@ def detect_test_framework(project_path: Path) -> dict:
                 result["framework"] = "npm test"
                 result["cmd"] = ["npm", "test"]
                 
-                # Try to detect specific framework for coverage
+                # Specific framework overrides
                 if "vitest" in deps:
                     result["framework"] = "vitest"
+                    result["cmd"] = ["npx", "vitest", "run"]
                     result["coverage_cmd"] = ["npx", "vitest", "run", "--coverage"]
                 elif "jest" in deps:
                     result["framework"] = "jest"
@@ -88,8 +102,9 @@ def run_tests(cmd: list, cwd: Path) -> dict:
     }
     
     try:
+        final_cmd = resolve_cmd(cmd)
         proc = subprocess.run(
-            cmd,
+            final_cmd,
             cwd=str(cwd),
             capture_output=True,
             text=True,

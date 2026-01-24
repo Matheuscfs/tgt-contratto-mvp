@@ -28,6 +28,19 @@
   --radius-sharp: 2px;
 }
 
+/* Accessibility: Respect reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 /* Custom Utilities */
 @layer utilities {
   .sr-only {
@@ -40,6 +53,50 @@
     clip: rect(0, 0, 0, 0);
     white-space: nowrap;
     border-width: 0;
+  }
+
+  /* Fluid Typography */
+  .text-fluid-sm {
+    font-size: clamp(0.875rem, 0.8rem + 0.25vw, 1rem);
+  }
+
+  .text-fluid-base {
+    font-size: clamp(1rem, 0.9rem + 0.5vw, 1.125rem);
+  }
+
+  .text-fluid-lg {
+    font-size: clamp(1.125rem, 1rem + 0.625vw, 1.25rem);
+  }
+
+  .text-fluid-xl {
+    font-size: clamp(1.25rem, 1.1rem + 0.75vw, 1.5rem);
+  }
+
+  .text-fluid-2xl {
+    font-size: clamp(1.5rem, 1.3rem + 1vw, 2rem);
+  }
+
+  .text-fluid-3xl {
+    font-size: clamp(1.875rem, 1.5rem + 1.5vw, 2.5rem);
+  }
+
+  .text-fluid-4xl {
+    font-size: clamp(2.25rem, 1.8rem + 2vw, 3rem);
+  }
+
+  /* Readability */
+  .prose-readable {
+    max-width: 65ch;
+    line-height: 1.6;
+  }
+
+  /* Heading Line Heights */
+  .heading-tight {
+    line-height: 1.1;
+  }
+
+  .heading-normal {
+    line-height: 1.3;
   }
 }
 
