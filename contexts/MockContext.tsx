@@ -59,10 +59,8 @@ export const MockProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 // Companies
                 const savedCompanies = localStorage.getItem('tgt_mock_companies_v3');
                 if (savedCompanies) {
-                    console.log('Loaded companies from v3 storage');
                     setCompanies(JSON.parse(savedCompanies));
                 } else {
-                    console.log('Loading companies from MOCK_COMPANIES');
                     setCompanies(MOCK_COMPANIES);
                 }
 
