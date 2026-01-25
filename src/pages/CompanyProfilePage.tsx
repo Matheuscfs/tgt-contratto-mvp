@@ -59,6 +59,54 @@ const CompanyProfilePage: React.FC = () => {
 
         if (servicesError) throw servicesError;
 
+        // Fetch reviews for this company
+        const { data: reviewsData, error: reviewsError } = await supabase
+          .from('reviews')
+          .select('*')
+          .eq('company_id', companyData.id);
+
+        if (reviewsError) throw reviewsError;
+
+        // Fetch profiles for the reviews to get author names/avatars
+        let enrichedReviews: any[] = [];
+        if (reviewsData && reviewsData.length > 0) {
+          const userIds = [...new Set(reviewsData.map(r => r.client_id))];
+          const { data: profilesData, error: profilesError } = await supabase
+            .from('profiles')
+            .select('id, full_name, avatar_url')
+            .in('id', userIds);
+
+          if (!profilesError && profilesData) {
+            const profilesMap = new Map(profilesData.map(p => [p.id, p]));
+            enrichedReviews = reviewsData.map(r => {
+              const profile = profilesMap.get(r.client_id);
+              return {
+                id: r.id,
+                author: profile?.full_name || 'Usuário',
+                avatar: profile?.avatar_url || 'https://i.pravatar.cc/150?u=default',
+                rating: r.rating,
+                comment: r.comment,
+                date: new Date(r.created_at).toLocaleDateString('pt-BR')
+              };
+            });
+          }
+        }
+
+        // Fetch Portfolio
+        const { data: portfolioData, error: portfolioError } = await supabase
+          .from('portfolio_items')
+          .select('*')
+          .eq('company_id', companyData.id)
+          .order('created_at', { ascending: false });
+
+        if (portfolioError && portfolioError.code !== 'PGRST116') {
+          console.warn("Error fetching portfolio:", portfolioError);
+        }
+
+        // Calculate Average Rating
+        const totalRating = enrichedReviews.reduce((acc, r) => acc + r.rating, 0);
+        const avgRating = enrichedReviews.length > 0 ? (totalRating / enrichedReviews.length) : 0; // Default to 0 if no reviews
+
         // Construct Company object compatible with UI types
         // Note: Address is JSONB in DB but object in UI. Cast safely.
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -73,8 +121,8 @@ const CompanyProfilePage: React.FC = () => {
           logo: companyData.logo_url || 'https://via.placeholder.com/150',
           coverImage: companyData.cover_image_url || 'https://placehold.co/1200x400',
           category: companyData.category,
-          rating: 5.0, // TODO: Calculate from reviews table
-          reviewCount: 0, // TODO: Count from reviews table
+          rating: parseFloat(avgRating.toFixed(1)),
+          reviewCount: enrichedReviews.length,
           description: companyData.description || '',
           address: {
             street: address.street || '',
@@ -83,15 +131,15 @@ const CompanyProfilePage: React.FC = () => {
             city: address.city || '',
             state: address.state || '',
             cep: address.cep || '',
-            lat: -23.55052, // Placeholder default
-            lng: -46.63330  // Placeholder default
+            lat: address.lat || -23.55052,
+            lng: address.lng || -46.63330
           },
           phone: companyData.phone,
           email: companyData.email,
           website: companyData.website,
           services: servicesData || [],
-          portfolio: [], // TODO: implementations
-          reviews: []    // TODO: implementations
+          portfolio: portfolioData?.map(p => p.image_url) || [],
+          reviews: enrichedReviews
         };
 
         setCompany(constructedCompany);
@@ -124,11 +172,8 @@ const CompanyProfilePage: React.FC = () => {
     setSelectedService(service);
     setIsBookingModalOpen(true);
   };
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const handleAddReview = (review: any) => {
-    // Placeholder: Connect to DB later
-    console.log("Adding review", review);
-  }
+
+  // Handler functions removed as logic is now inside Modals
 
   return (
     <div className="bg-white">
@@ -261,8 +306,17 @@ const CompanyProfilePage: React.FC = () => {
             {/* Portfolio Section */}
             <section id="portfolio">
               <h2 className="text-2xl font-bold text-gray-900 border-b pb-2 mb-4">Portfólio</h2>
-              <p className="text-gray-500">Em breve...</p>
-              {/* <ImageGallery items={company.portfolio} /> */}
+              {company.portfolio.length === 0 ? (
+                <p className="text-gray-500">Em breve...</p>
+              ) : (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  {company.portfolio.map((img, idx) => (
+                    <div key={idx} className="aspect-square rounded-lg overflow-hidden bg-gray-100">
+                      <img src={img} alt={`Portfolio ${idx}`} className="w-full h-full object-cover hover:scale-105 transition-transform duration-300" />
+                    </div>
+                  ))}
+                </div>
+              )}
             </section>
 
             {/* FAQ Section for GEO */}
@@ -351,7 +405,7 @@ const CompanyProfilePage: React.FC = () => {
             onClose={() => setIsReviewModalOpen(false)}
             companyId={company.id}
             companyName={company.companyName}
-            onSubmitMock={handleAddReview}
+            onSuccess={() => window.location.reload()}
           />
         </>
       )}

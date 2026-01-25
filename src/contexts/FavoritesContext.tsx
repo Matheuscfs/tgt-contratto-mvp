@@ -1,66 +1,97 @@
 import React, { createContext, useState, useContext, useEffect, ReactNode, useCallback } from 'react';
 import { useAuth } from './AuthContext';
+import { supabase } from '../lib/supabase';
+import { useToast } from './ToastContext';
 
 interface FavoritesContextType {
   favorites: string[];
-  addFavorite: (companyId: string) => void;
-  removeFavorite: (companyId: string) => void;
+  addFavorite: (companyId: string) => Promise<void>;
+  removeFavorite: (companyId: string) => Promise<void>;
   isFavorite: (companyId: string) => boolean;
 }
 
 const FavoritesContext = createContext<FavoritesContextType | undefined>(undefined);
 
-const getFavoritesFromStorage = (userId: string): string[] => {
-  try {
-    const item = localStorage.getItem(`favorites_${userId}`);
-    return item ? JSON.parse(item) : [];
-  } catch (error) {
-    console.error("Error reading favorites from localStorage", error);
-    return [];
-  }
-};
-
-const setFavoritesInStorage = (userId: string, favorites: string[]) => {
-  try {
-    localStorage.setItem(`favorites_${userId}`, JSON.stringify(favorites));
-  } catch (error) {
-    console.error("Error saving favorites to localStorage", error);
-  }
-};
-
 export const FavoritesProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { user } = useAuth();
+  const { addToast } = useToast();
   const [favorites, setFavorites] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false); // To prevent double actions
 
   useEffect(() => {
-    if (user && user.type === 'client') {
-      // eslint-disable-next-line 
-      setFavorites(getFavoritesFromStorage(user.id));
-    } else {
-      setFavorites([]);
-    }
-  }, [user]);
+    const fetchFavorites = async () => {
+      if (user && user.type === 'client') {
+        const { data, error } = await supabase
+          .from('favorites')
+          .select('company_id')
+          .eq('user_id', user.id);
 
-  const addFavorite = useCallback((companyId: string) => {
-    if (!user || user.type !== 'client') return;
-    setFavorites(prevFavorites => {
-      if (prevFavorites.includes(companyId)) {
-        return prevFavorites;
+        if (!error && data) {
+          setFavorites(data.map(f => f.company_id));
+        } else if (error) {
+          console.error("Error fetching favorites:", error);
+        }
+      } else {
+        setFavorites([]);
       }
-      const newFavorites = [...prevFavorites, companyId];
-      setFavoritesInStorage(user.id, newFavorites);
-      return newFavorites;
-    });
+    };
+
+    fetchFavorites();
   }, [user]);
 
-  const removeFavorite = useCallback((companyId: string) => {
+  const addFavorite = useCallback(async (companyId: string) => {
+    if (!user || user.type !== 'client') {
+      addToast("Faça login como cliente para favoritar.", "info");
+      return;
+    }
+
+    // Optimistic update
+    setFavorites(prev => [...prev, companyId]);
+
+    try {
+      const { error } = await supabase
+        .from('favorites')
+        .insert({ user_id: user.id, company_id: companyId });
+
+      if (error) {
+        // Rollback
+        setFavorites(prev => prev.filter(id => id !== companyId));
+        console.error("Error adding favorite:", error);
+        addToast("Erro ao adicionar favorito.", "error");
+      } else {
+        addToast("Adicionado aos favoritos!", "success");
+      }
+    } catch (err) {
+      setFavorites(prev => prev.filter(id => id !== companyId));
+      console.error("Exception adding favorite:", err);
+    }
+  }, [user, addToast]);
+
+  const removeFavorite = useCallback(async (companyId: string) => {
     if (!user || user.type !== 'client') return;
-    setFavorites(prevFavorites => {
-      const newFavorites = prevFavorites.filter(id => id !== companyId);
-      setFavoritesInStorage(user.id, newFavorites);
-      return newFavorites;
-    });
-  }, [user]);
+
+    // Optimistic update
+    setFavorites(prev => prev.filter(id => id !== companyId));
+
+    try {
+      const { error } = await supabase
+        .from('favorites')
+        .delete()
+        .match({ user_id: user.id, company_id: companyId }); // match is cleaner for multiple keys
+
+      if (error) {
+        // Rollback
+        setFavorites(prev => [...prev, companyId]);
+        console.error("Error removing favorite:", error);
+        addToast("Erro ao remover favorito.", "error");
+      } else {
+        addToast("Removido dos favoritos.", "info");
+      }
+    } catch (err) {
+      setFavorites(prev => [...prev, companyId]);
+      console.error("Exception removing favorite:", err);
+    }
+  }, [user, addToast]);
 
   const isFavorite = useCallback((companyId: string): boolean => {
     return favorites.includes(companyId);

@@ -11,7 +11,7 @@ interface ReviewModalProps {
     onClose: () => void;
     companyId: string;
     companyName: string;
-    onSubmitMock?: (review: { rating: number; comment: string }) => void; // Optional now
+    onSuccess?: () => void;
 }
 
 const ReviewModal: React.FC<ReviewModalProps> = ({
@@ -19,6 +19,7 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
     onClose,
     companyId,
     companyName,
+    onSuccess
 }) => {
     const [rating, setRating] = useState(0);
     const [hoverRating, setHoverRating] = useState(0);
@@ -67,6 +68,7 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
                 onClose();
                 setRating(0);
                 setComment('');
+                if (onSuccess) onSuccess();
             }, 1500);
 
         } catch (err) {

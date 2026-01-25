@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import Button from './ui/Button';
-import { useMockData } from '../contexts/MockContext';
+import { supabase } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 
 interface MessageModalProps {
@@ -11,36 +12,62 @@ interface MessageModalProps {
 }
 
 const MessageModal: React.FC<MessageModalProps> = ({ companyId, companyName, isOpen, onClose }) => {
-    const [name, setName] = useState('');
-    const [email, setEmail] = useState('');
+    const { user } = useAuth();
+    const { addToast } = useToast();
+
+    // We only need message content now, sender info comes from Auth
     const [message, setMessage] = useState('');
     const [isSending, setIsSending] = useState(false);
-    const { sendMessage } = useMockData();
-    const { addToast } = useToast();
+
+    // If user is not logged in or not a client, we might want to prompt login.
+    // Ideally this modal shouldn't even open if not logged in, but let's handle it safely.
 
     if (!isOpen) return null;
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        if (!user) {
+            addToast("Você precisa estar logado para enviar mensagens.", "info");
+            return;
+        }
+
         setIsSending(true);
 
-        // Simulate network delay
-        setTimeout(() => {
-            sendMessage(companyId, {
-                senderName: name,
-                senderEmail: email,
-                content: message,
-                companyId: companyId
-            });
+        try {
+            // Find the company's profile_id to act as receiver_id
+            // The companyId passed prop is the 'companies' table ID.
+            // Messages table uses profile_id (auth.users id).
+            const { data: companyData, error: companyError } = await supabase
+                .from('companies')
+                .select('profile_id')
+                .eq('id', companyId)
+                .single();
+
+            if (companyError || !companyData) throw new Error("Empresa não encontrada para envio.");
+
+            const { error: msgError } = await supabase
+                .from('messages')
+                .insert({
+                    sender_id: user.id,
+                    receiver_id: companyData.profile_id,
+                    content: message,
+                    read: false
+                });
+
+            if (msgError) throw msgError;
 
             addToast(`Mensagem enviada para ${companyName}!`, 'success');
-            setIsSending(false);
-            // Reset form
-            setName('');
-            setEmail('');
+
             setMessage('');
             onClose();
-        }, 1000);
+
+        } catch (err) {
+            console.error("Error sending message:", err);
+            addToast("Erro ao enviar mensagem. Tente novamente.", "error");
+        } finally {
+            setIsSending(false);
+        }
     };
 
     return (
@@ -66,24 +93,29 @@ const MessageModal: React.FC<MessageModalProps> = ({ companyId, companyName, isO
                                         Enviar mensagem para {companyName}
                                     </h3>
                                     <div className="mt-4 space-y-4">
-                                        <div>
-                                            <label htmlFor="name" className="block text-sm font-medium text-gray-700">Seu Nome</label>
-                                            <input type="text" id="name" required value={name} onChange={e => setName(e.target.value)} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm" />
-                                        </div>
-                                        <div>
-                                            <label htmlFor="email" className="block text-sm font-medium text-gray-700">Seu Email</label>
-                                            <input type="email" id="email" required value={email} onChange={e => setEmail(e.target.value)} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm" />
-                                        </div>
+                                        {!user && (
+                                            <p className="text-sm text-red-500 bg-red-50 p-2 rounded">
+                                                Faça login para enviar mensagens.
+                                            </p>
+                                        )}
                                         <div>
                                             <label htmlFor="message" className="block text-sm font-medium text-gray-700">Mensagem</label>
-                                            <textarea id="message" rows={3} required value={message} onChange={e => setMessage(e.target.value)} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"></textarea>
+                                            <textarea
+                                                id="message"
+                                                rows={4}
+                                                required
+                                                value={message}
+                                                onChange={e => setMessage(e.target.value)}
+                                                placeholder="Olá, gostaria de saber mais sobre..."
+                                                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                                            ></textarea>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
                         <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                            <Button type="submit" isLoading={isSending} className="w-full sm:w-auto sm:ml-3">
+                            <Button type="submit" isLoading={isSending} className="w-full sm:w-auto sm:ml-3" disabled={!user}>
                                 Enviar Mensagem
                             </Button>
                             <Button type="button" variant="secondary" onClick={onClose} className="mt-3 w-full sm:mt-0 sm:ml-3 sm:w-auto">

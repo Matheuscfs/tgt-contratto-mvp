@@ -1,36 +1,52 @@
-# TGT Guia de Negócios
+# TGT Guia de Negócios (MVP)
 
 Plataforma completa para conectar clientes a prestadores de serviços locais. 
-Permite que empresas criem perfis, gerenciem serviços e recebam orçamentos, enquanto clientes podem buscar, avaliar e agendar serviços.
+Permite que empresas criem perfis profissionais, gerenciem serviços e recebam orçamentos, enquanto clientes podem buscar, avaliar e agendar serviços de forma simples e direta.
+
+![Status](https://img.shields.io/badge/Status-Development-yellow)
+![License](https://img.shields.io/badge/License-MIT-blue)
 
 ## 🚀 Funcionalidades
 
-### Para Clientes
-- **Busca de Empresas:** Encontre prestadores de serviços por categoria.
-- **Perfil Completo:** Gerencie seus dados pessoais (CPF, Endereço), veja histórico de pedidos e mensagens.
-- **Agendamentos:** Solicite orçamentos com data/hora preferencial e acompanhe o status (Pendente/Confirmado).
-- **Chat Realtime:** Converse diretamente com as empresas para tirar dúvidas.
-- **Avaliações:** Deixe feedback (estrelas e comentários) sobre os serviços prestados.
-- **Favoritos:** Salve suas empresas preferidas para acesso rápido.
+### 👤 Para Clientes
+- **Busca Inteligente:** Encontre prestadores de serviços por categoria ou nome.
+- **Perfil do Usuário:** Gerencie seus dados (CPF, Endereço), histórico de pedidos e preferências.
+- **Agendamentos:** Solicite orçamentos e acompanhe o status (Pendente, Confirmado, Concluído).
+- **Chat em Tempo Real:** Converse diretamente com as empresas.
+- **Sistema de Avaliação:** Classifique serviços com notas e comentários.
+- **Favoritos:** Salve empresas para acesso rápido.
 
-### Para Empresas
-- **Perfil Profissional:** Página pública com Logo, Capa, Portfólio, Endereço e Contatos.
-- **Gestão de Serviços:** Cadastre seus serviços com preços e duração.
-- **Dashboard:** Painel administrativo para gerenciar agendamentos e responder mensagens.
-- **Recebimento de Pedidos:** Aceite ou recuse solicitações de orçamento.
-- **Resposta a Avaliações:** Interaja com o feedback dos clientes.
+### 🏢 Para Empresas
+- **Perfil Profissional:** Página pública customizável com Logo, Capa, Portfólio e Mapa.
+- **Gestão de Serviços:** Cadastro detalhado de serviços com preços e duração.
+- **Dashboard Administrativo:** Painel para aceitar/recusar orçamentos e visualizar métricas.
+- **Interação:** Responda a avaliações e mensagens de clientes.
 
-## 🛠️ Tecnologias Utilizadas
+## 🛠️ Tecnologias e Qualidade de Código
 
-- **Frontend:** React, Vite, Tailwind CSS (v4), Framer Motion.
-- **Backend:** Supabase (Auth, Database, Storage, Realtime).
-- **Deploy:** Vercel.
+### Stack Principal
+- **Frontend:** [React](https://react.dev/) + [Vite](https://vitejs.dev/)
+- **Linguagem:** [TypeScript](https://www.typescriptlang.org/) (Strict Mode)
+- **Estilização:** [Tailwind CSS v4](https://tailwindcss.com/) + Framer Motion
+- **Backend:** [Supabase](https://supabase.com/) (Auth, Postgres, Realtime, Storage)
+
+### Padrões de Qualidade
+Este projeto segue rigorosos padrões de qualidade de código:
+- **Linting:** ESLint configurado para evitar erros comuns e garantir consistência.
+- **Type Safety:** Tipagem estrita para reduzir bugs em tempo de execução.
+- **Clean Code:** Estrutura modular de componentes, hooks customizados e contextos.
 
 ## 📦 Instalação e Execução
 
+### Pré-requisitos
+- Node.js 18+
+- Conta no Supabase
+
+### Passo a Passo
+
 1.  **Clone o repositório:**
     ```bash
-    git clone https://github.com/seu-usuario/tgt-guia-de-negocios.git
+    git clone https://github.com/Matheuscfs/tgt-contratto-mvp.git
     cd tgt-guia-de-negocios
     ```
 
@@ -40,7 +56,7 @@ Permite que empresas criem perfis, gerenciem serviços e recebam orçamentos, en
     ```
 
 3.  **Configuração do Ambiente:**
-    Crie um arquivo `.env` na raiz do projeto com suas credenciais do Supabase:
+    Crie um arquivo `.env` na raiz do projeto com suas credenciais:
     ```env
     VITE_SUPABASE_URL=sua_url_supabase
     VITE_SUPABASE_ANON_KEY=sua_chave_anonima
@@ -51,17 +67,24 @@ Permite que empresas criem perfis, gerenciem serviços e recebam orçamentos, en
     npm run dev
     ```
 
-## 🗄️ Estrutura do Banco de Dados (Supabase)
+## 🗄️ Estrutura do Banco de Dados
 
-O projeto utiliza as seguintes tabelas no PostgreSQL:
-- `profiles`: Dados de usuários (Clientes e Empresas).
-- `companies`: Dados públicos das empresas.
-- `services`: Serviços oferecidos pelas empresas.
-- `bookings`: Agendamentos e pedidos de orçamento.
-- `reviews`: Avaliações de clientes.
-- `messages`: Mensagens de chat.
-- `favorites`: Empresas favoritas dos clientes.
+O backend no Supabase utiliza as seguintes tabelas principais:
+- `profiles`: Usuários do sistema (discriminados por `user_type`).
+- `companies`: Perfis públicos de empresas (vinculados a `profiles`).
+- `services`: Catálogo de serviços de cada empresa.
+- `bookings`: Solicitações de serviço e agendamentos.
+- `reviews`: Avaliações e comentários.
+- `messages`: Mensagens trocadas no chat.
+- `favorites`: Relação de empresas favoritas dos usuários.
+
+## 🚀 Deploy
+
+O projeto está configurado para deploy automático na **Vercel**.
+Basta conectar o repositório GitHub à Vercel e configurar as variáveis de ambiente.
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FMatheuscfs%2Ftgt-contratto-mvp)
 
 ## 📜 Licença
 
-Este projeto é um MVP desenvolvido para o TGT.
+Desenvolvido para o TGT. Todos os direitos reservados.
