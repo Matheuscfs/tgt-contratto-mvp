@@ -9,7 +9,7 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
     src,
     alt,
     className = '',
-    fallbackSrc = '/placeholder.png',
+    fallbackSrc = 'https://placehold.co/400x300?text=No+Image',
     ...props
 }) => {
     const [imgSrc, setImgSrc] = useState(src);
