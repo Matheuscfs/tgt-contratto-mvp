@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import LoadingSkeleton from '../../components/ui/LoadingSkeleton';
@@ -29,6 +29,64 @@ const DashboardMensagensPage: React.FC = () => {
     const [messages, setMessages] = useState<Message[]>([]);
     const [newMessage, setNewMessage] = useState('');
     const [loading, setLoading] = useState(true);
+
+    const fetchThreads = useCallback(async () => {
+        // This is a simplified fetch. In production, use a dedicated view or RPC for performance.
+        // Fetching all messages and aggregating client-side for MVP.
+        try {
+            const { data: sent, error: sentError } = await supabase
+                .from('messages')
+                .select('*')
+                .eq('sender_id', user!.id);
+
+            const { data: received, error: receivedError } = await supabase
+                .from('messages')
+                .select('*, sender:profiles!sender_id(full_name, avatar_url, email)') // Assuming generic relation
+                .eq('receiver_id', user!.id);
+
+            if (sentError || receivedError) throw new Error('Failed to fetch');
+
+            // process threads...
+            // Mocking threads for MVP display if backend is empty
+            if ((!sent || sent.length === 0) && (!received || received.length === 0)) {
+                setThreads([]);
+            } else {
+                // Logic to aggregate threads would go here
+                // For now, let's just use the received messages to build contact list
+                const uniqueSenders = new Map<string, Thread>();
+
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                received?.forEach((msg: any) => {
+                    if (!uniqueSenders.has(msg.sender_id)) {
+                        uniqueSenders.set(msg.sender_id, {
+                            partnerId: msg.sender_id,
+                            partnerName: msg.sender?.full_name || 'Usuário',
+                            partnerAvatar: msg.sender?.avatar_url,
+                            lastMessage: msg.content,
+                            lastMessageTime: msg.created_at,
+                            unreadCount: msg.read_at ? 0 : 1
+                        });
+                    }
+                });
+                setThreads(Array.from(uniqueSenders.values()));
+            }
+
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setLoading(false);
+        }
+    }, [user]);
+
+    const fetchMessages = useCallback(async (partnerId: string) => {
+        const { data } = await supabase
+            .from('messages')
+            .select('*')
+            .or(`and(sender_id.eq.${user!.id},receiver_id.eq.${partnerId}),and(sender_id.eq.${partnerId},receiver_id.eq.${user!.id})`)
+            .order('created_at', { ascending: true });
+
+        if (data) setMessages(data);
+    }, [user]);
 
     useEffect(() => {
         if (!user) return;
@@ -63,63 +121,6 @@ const DashboardMensagensPage: React.FC = () => {
             };
         }
     }, [activeThread, user, fetchMessages]);
-
-    const fetchThreads = async () => {
-        // This is a simplified fetch. In production, use a dedicated view or RPC for performance.
-        // Fetching all messages and aggregating client-side for MVP.
-        try {
-            const { data: sent, error: sentError } = await supabase
-                .from('messages')
-                .select('*')
-                .eq('sender_id', user!.id);
-
-            const { data: received, error: receivedError } = await supabase
-                .from('messages')
-                .select('*, sender:profiles!sender_id(full_name, avatar_url, email)') // Assuming generic relation
-                .eq('receiver_id', user!.id);
-
-            if (sentError || receivedError) throw new Error('Failed to fetch');
-
-            // process threads...
-            // Mocking threads for MVP display if backend is empty
-            if ((!sent || sent.length === 0) && (!received || received.length === 0)) {
-                setThreads([]);
-            } else {
-                // Logic to aggregate threads would go here
-                // For now, let's just use the received messages to build contact list
-                const uniqueSenders = new Map<string, Thread>();
-
-                received?.forEach((msg: any) => {
-                    if (!uniqueSenders.has(msg.sender_id)) {
-                        uniqueSenders.set(msg.sender_id, {
-                            partnerId: msg.sender_id,
-                            partnerName: msg.sender?.full_name || 'Usuário',
-                            partnerAvatar: msg.sender?.avatar_url,
-                            lastMessage: msg.content,
-                            lastMessageTime: msg.created_at,
-                            unreadCount: msg.read_at ? 0 : 1
-                        });
-                    }
-                });
-                setThreads(Array.from(uniqueSenders.values()));
-            }
-
-        } catch (err) {
-            console.error(err);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const fetchMessages = async (partnerId: string) => {
-        const { data } = await supabase
-            .from('messages')
-            .select('*')
-            .or(`and(sender_id.eq.${user!.id},receiver_id.eq.${partnerId}),and(sender_id.eq.${partnerId},receiver_id.eq.${user!.id})`)
-            .order('created_at', { ascending: true });
-
-        if (data) setMessages(data);
-    };
 
     const handleSendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -216,8 +217,8 @@ const DashboardMensagensPage: React.FC = () => {
                                     <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
                                         <div
                                             className={`max-w-[70%] px-4 py-2 rounded-2xl shadow-sm text-sm ${isMe
-                                                ? 'bg-brand-primary text-white rounded-br-none'
-                                                : 'bg-white text-gray-800 border border-gray-100 rounded-bl-none'
+                                                    ? 'bg-brand-primary text-white rounded-br-none'
+                                                    : 'bg-white text-gray-800 border border-gray-100 rounded-bl-none'
                                                 }`}
                                         >
                                             {msg.content}

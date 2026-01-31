@@ -36,6 +36,7 @@ const CompanyProfilePage: React.FC = () => {
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [heroImageError, setHeroImageError] = useState(false);
+  const [submittingReview, setSubmittingReview] = useState(false);
 
   useEffect(() => {
     const fetchCompany = async () => {
@@ -175,7 +176,7 @@ const CompanyProfilePage: React.FC = () => {
   };
 
   // Handler functions
-  const [submittingReview, setSubmittingReview] = useState(false);
+  // Handler functions
 
   const handleReviewSubmit = async (rating: number, comment: string) => {
     if (!user || user.type !== 'client') {
