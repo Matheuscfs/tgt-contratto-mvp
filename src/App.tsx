@@ -1,6 +1,6 @@
 import React from 'react';
 import { HelmetProvider } from 'react-helmet-async';
-import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { NotificationProvider } from './contexts/NotificationContext';
 import { CompanyProvider } from './contexts/CompanyContext';
@@ -9,8 +9,6 @@ import Footer from './components/layout/Footer';
 import ClientLandingPage from './pages/ClientLandingPage';
 import CompaniesListPage from './pages/LandingPage';
 import CompanyProfilePage from './pages/CompanyProfilePage';
-import RegisterPage from './pages/RegisterPage';
-import LoginPage from './pages/LoginPage';
 import DashboardLayout from './components/layout/DashboardLayout';
 import DashboardOverviewPage from './pages/pro/DashboardOverviewPage';
 import DashboardPerfilPage from './pages/pro/DashboardPerfilPage';
@@ -31,6 +29,10 @@ import { ToastProvider } from './contexts/ToastContext';
 import CompanyRegistrationPage from './pages/CompanyRegistrationPage';
 import { FavoritesProvider } from './contexts/FavoritesContext';
 import { MockProvider } from './contexts/MockContext';
+import ClientPostJobPage from './pages/client/ClientPostJobPage';
+import ProFindJobsPage from './pages/pro/ProFindJobsPage';
+import ProJobDetailsPage from './pages/pro/ProJobDetailsPage';
+
 
 // Info Pages
 import ForCompaniesPage from './pages/info/ForCompaniesPage';
@@ -48,6 +50,12 @@ import PageTransition from './components/PageTransition';
 import ScrollToTop from './components/ScrollToTop';
 import { lazy, Suspense } from 'react'; // Ensure lazy/Suspense are imported
 import LoadingSpinner from './components/ui/LoadingSpinner'; // Assuming this exists or using simple fallback
+
+// Auth Pages
+import ClientLoginPage from './pages/auth/ClientLoginPage';
+import CompanyLoginPage from './pages/auth/CompanyLoginPage';
+import ClientRegisterPage from './pages/auth/ClientRegisterPage';
+import CompanyRegisterPage from './pages/auth/CompanyRegisterPage';
 
 const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'));
 const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
@@ -67,8 +75,20 @@ const MainRoutes = () => {
         <Route path="/" element={<AnimatedElement><ClientLandingPage /></AnimatedElement>} />
         <Route path="/empresas" element={<AnimatedElement><CompaniesListPage /></AnimatedElement>} />
         <Route path="/empresa/:slug" element={<AnimatedElement><CompanyProfilePage /></AnimatedElement>} />
-        <Route path="/auth/register" element={<AnimatedElement><RegisterPage /></AnimatedElement>} />
-        <Route path="/auth/login" element={<AnimatedElement><LoginPage /></AnimatedElement>} />
+
+        {/* Auth Routes - Clients */}
+        <Route path="/login/cliente" element={<AnimatedElement><ClientLoginPage /></AnimatedElement>} />
+        <Route path="/cadastro/cliente" element={<AnimatedElement><ClientRegisterPage /></AnimatedElement>} />
+
+        {/* Auth Routes - Companies */}
+        <Route path="/login/empresa" element={<AnimatedElement><CompanyLoginPage /></AnimatedElement>} />
+        <Route path="/cadastro/empresa" element={<AnimatedElement><CompanyRegisterPage /></AnimatedElement>} />
+
+        {/* Legacy redirects */}
+        <Route path="/auth/login" element={<Navigate to="/login/cliente" replace />} />
+        <Route path="/auth/register" element={<Navigate to="/cadastro/cliente" replace />} />
+
+        {/* Common Auth */}
         <Route path="/auth/forgot-password" element={<AnimatedElement><Suspense fallback={<LoadingSpinner />}><ForgotPasswordPage /></Suspense></AnimatedElement>} />
         <Route path="/auth/reset-password" element={<AnimatedElement><Suspense fallback={<LoadingSpinner />}><ResetPasswordPage /></Suspense></AnimatedElement>} />
         <Route path="/empresa/cadastro" element={<AnimatedElement><CompanyRegistrationPage /></AnimatedElement>} />
@@ -79,10 +99,13 @@ const MainRoutes = () => {
         <Route path="/perfil/pedidos" element={<ProtectedRoute userType="client" element={<AnimatedElement><ClientOrdersPage /></AnimatedElement>} />} />
         <Route path="/minhas-mensagens" element={<ProtectedRoute userType="client" element={<AnimatedElement><ClientMessagesPage /></AnimatedElement>} />} />
         <Route path="/favoritos" element={<ProtectedRoute userType="client" element={<AnimatedElement><FavoritesPage /></AnimatedElement>} />} />
+        <Route path="/cliente/novo-pedido" element={<ProtectedRoute userType="client" element={<AnimatedElement><ClientPostJobPage /></AnimatedElement>} />} />
 
         {/* Company Dashboard Routes - DashboardLayout handles its own outlet, maybe animate layout entry? */}
         <Route path="/dashboard/empresa/:slug" element={<DashboardLayout />}>
           <Route index element={<AnimatedElement><DashboardOverviewPage /></AnimatedElement>} />
+          <Route path="oportunidades" element={<AnimatedElement><ProFindJobsPage /></AnimatedElement>} />
+          <Route path="oportunidades/:id" element={<AnimatedElement><ProJobDetailsPage /></AnimatedElement>} /> {/* [NEW] */}
           <Route path="perfil" element={<AnimatedElement><DashboardPerfilPage /></AnimatedElement>} />
           <Route path="administradores" element={<AnimatedElement><DashboardAdministradoresPage /></AnimatedElement>} />
           <Route path="servicos" element={<AnimatedElement><DashboardServicosPage /></AnimatedElement>} />
@@ -114,7 +137,7 @@ const MainRoutes = () => {
 const App = (): React.ReactElement => {
   return (
     <HelmetProvider>
-      <HashRouter
+      <BrowserRouter
         future={{
           v7_startTransition: true,
           v7_relativeSplatPath: true,
@@ -140,7 +163,7 @@ const App = (): React.ReactElement => {
             </NotificationProvider>
           </ToastProvider>
         </AuthProvider>
-      </HashRouter>
+      </BrowserRouter>
     </HelmetProvider>
   );
 };

@@ -95,7 +95,7 @@ export interface Booking {
 export interface Notification {
   id: string;
   user_id: string;
-  type: 'booking_created' | 'booking_confirmed' | 'booking_completed' | 'booking_cancelled' | 'message_received' | 'review_received' | 'company_approved' | 'company_rejected';
+  type: 'booking_created' | 'booking_confirmed' | 'booking_completed' | 'booking_cancelled' | 'message_received' | 'review_received' | 'company_approved' | 'company_rejected' | 'proposal_received' | 'proposal_accepted';
   title: string;
   message: string;
   link?: string;

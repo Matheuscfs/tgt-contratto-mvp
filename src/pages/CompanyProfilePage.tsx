@@ -211,7 +211,7 @@ const CompanyProfilePage: React.FC = () => {
       <Helmet>
         <title>{company.companyName} | TGT - Guia de Negócios</title>
         <meta name="description" content={`Confira os serviços e avaliações de ${company.companyName} em ${company.address.city}, ${company.address.state}.`} />
-        <link rel="canonical" href={`https://tgt-guia-de-negocios.vercel.app/#/empresa/${company.slug}`} />
+        <link rel="canonical" href={`https://tgt-guia-de-negocios.vercel.app/empresa/${company.slug}`} />
 
         {/* Schema.org LocalBusiness Markup */}
         <script type="application/ld+json">
@@ -221,8 +221,8 @@ const CompanyProfilePage: React.FC = () => {
             "name": company.companyName,
             "image": company.logo,
             "description": company.description,
-            "@id": `https://tgt-guia-de-negocios.vercel.app/#/empresa/${company.slug}`,
-            "url": company.website || `https://tgt-guia-de-negocios.vercel.app/#/empresa/${company.slug}`,
+            "@id": `https://tgt-guia-de-negocios.vercel.app/empresa/${company.slug}`,
+            "url": company.website || `https://tgt-guia-de-negocios.vercel.app/empresa/${company.slug}`,
             "telephone": company.phone,
             "email": company.email,
             "address": {

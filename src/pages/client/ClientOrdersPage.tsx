@@ -3,93 +3,164 @@ import Button from '../../components/ui/Button';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { Booking } from '../../types';
+import ProposalList from '../../components/client/ProposalList';
+import { useNavigate } from 'react-router-dom';
 
 // Extended type for UI
 interface BookingWithCompany extends Booking {
     companyName: string;
     serviceName: string;
+    price: number;
+    date: string;
+    time: string;
+}
+
+interface Proposal {
+    id: string;
+    company_id: string;
+    price: number;
+    cover_letter: string;
+    status: 'pending' | 'accepted' | 'rejected';
+    created_at: string;
+    company: {
+        name: string;
+        avatar_url?: string;
+    }
+}
+
+interface JobRequest {
+    id: string;
+    title: string;
+    description: string;
+    status: 'open' | 'in_progress' | 'completed' | 'cancelled';
+    created_at: string;
+    budget_min?: number;
+    budget_max?: number;
+    proposals: Proposal[];
+    category?: { name: string };
 }
 
 const ClientOrdersPage: React.FC = () => {
     const { user } = useAuth();
-    const [orders, setOrders] = useState<BookingWithCompany[]>([]);
+    const navigate = useNavigate();
+
+    // State
     const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState<'active' | 'history'>('active');
+    const [activeTab, setActiveTab] = useState<'requests' | 'active' | 'history'>('requests');
 
-    useEffect(() => {
+    // Data
+    const [jobs, setJobs] = useState<JobRequest[]>([]);
+    const [bookings, setBookings] = useState<BookingWithCompany[]>([]);
+    const [expandedJobId, setExpandedJobId] = useState<string | null>(null);
+
+    const fetchJobs = React.useCallback(async () => {
         if (!user) return;
+        const { data, error } = await supabase
+            .from('jobs')
+            .select(`
+                *,
+                category:categories(name),
+                proposals (
+                    *,
+                    company:companies(name, avatar_url)
+                )
+            `)
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false });
 
-        const fetchOrders = async () => {
-            setLoading(true);
-            try {
-                // Fetch bookings for this client
-                const { data: bookingsData, error } = await supabase
-                    .from('bookings')
-                    .select('*')
-                    .eq('client_id', user.id)
-                    .order('created_at', { ascending: false });
-
-                if (error) throw error;
-
-                if (bookingsData && bookingsData.length > 0) {
-                    // Fetch company names
-                    const companyIds = [...new Set(bookingsData.map(b => b.company_id))];
-                    const { data: companiesData, error: companiesError } = await supabase
-                        .from('companies')
-                        .select('id, company_name')
-                        .in('id', companyIds);
-
-                    if (companiesError) throw companiesError;
-
-                    const companiesMap = new Map(companiesData?.map(c => [c.id, c.company_name]));
-
-                    const mappedOrders = bookingsData.map(b => ({
-                        ...b,
-                        companyName: companiesMap.get(b.company_id) || 'Empresa Desconhecida',
-                        serviceName: b.service_title,
-                        // Fix generic types if needed
-                        price: b.service_price || 0,
-                        date: b.booking_date,
-                        time: b.booking_time
-                    }));
-
-                    setOrders(mappedOrders);
-                } else {
-                    setOrders([]);
-                }
-
-            } catch (err) {
-                console.error("Error fetching client orders:", err);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchOrders();
+        if (error) console.error('Error fetching jobs:', error);
+        if (data) setJobs(data as unknown as JobRequest[]);
     }, [user]);
 
-    const activeOrders = orders.filter(o => ['pending', 'confirmed', 'in_progress'].includes(o.status));
-    const historyOrders = orders.filter(o => ['completed', 'cancelled', 'rejected'].includes(o.status));
+    const fetchBookings = React.useCallback(async () => {
+        if (!user) return;
+        const { data: bookingsData, error } = await supabase
+            .from('bookings')
+            .select('*')
+            .eq('client_id', user.id)
+            .order('created_at', { ascending: false });
 
-    const currentList = activeTab === 'active' ? activeOrders : historyOrders;
+        if (error) throw error;
+
+        if (bookingsData && bookingsData.length > 0) {
+            const companyIds = [...new Set(bookingsData.map(b => b.company_id))];
+            const { data: companiesData } = await supabase
+                .from('companies')
+                .select('id, name')
+                .in('id', companyIds);
+
+            const companiesMap = new Map(companiesData?.map(c => [c.id, c.name]));
+
+            const mappedOrders = bookingsData.map(b => ({
+                ...b,
+                companyName: companiesMap.get(b.company_id) || 'Empresa Desconhecida',
+                serviceName: b.service_title,
+                price: b.service_price || 0,
+                date: b.booking_date,
+                time: b.booking_time
+            }));
+            setBookings(mappedOrders as BookingWithCompany[]);
+        } else {
+            setBookings([]);
+        }
+    }, [user]);
+
+    const fetchAllData = React.useCallback(async () => {
+        setLoading(true);
+        try {
+            await Promise.all([fetchJobs(), fetchBookings()]);
+        } catch (error) {
+            console.error("Error fetching data:", error);
+        } finally {
+            setLoading(false);
+        }
+    }, [fetchJobs, fetchBookings]);
+
+    useEffect(() => {
+        if (user) {
+            fetchAllData();
+        }
+    }, [user, fetchAllData]);
+
+    const handleAcceptProposal = () => {
+        // Refresh data to show new booking and updated job status
+        fetchAllData();
+        setActiveTab('active'); // Switch to active bookings tab
+    };
+
+    const activeBookings = bookings.filter(o => ['pending', 'confirmed', 'in_progress'].includes(o.status));
+    const historyBookings = bookings.filter(o => ['completed', 'cancelled', 'rejected'].includes(o.status));
 
     return (
         <div className="container mx-auto px-4 py-8 max-w-4xl">
-            <h1 className="text-2xl font-bold text-gray-900 mb-6">Meus Pedidos</h1>
+            <div className="flex justify-between items-center mb-6">
+                <h1 className="text-2xl font-bold text-gray-900">Meus Pedidos</h1>
+                <Button onClick={() => navigate('/cliente/novo-pedido')}>
+                    + Novo Pedido
+                </Button>
+            </div>
 
             {/* Tabs */}
-            <div className="flex border-b border-gray-200 mb-8">
+            <div className="flex border-b border-gray-200 mb-8 overflow-x-auto">
                 <button
-                    onClick={() => setActiveTab('active')}
-                    className={`pb-4 px-6 font-medium text-sm transition-colors relative ${activeTab === 'active' ? 'text-brand-primary' : 'text-gray-500 hover:text-gray-700'
+                    onClick={() => setActiveTab('requests')}
+                    className={`pb-4 px-6 font-medium text-sm transition-colors whitespace-nowrap relative ${activeTab === 'requests' ? 'text-brand-primary' : 'text-gray-500 hover:text-gray-700'
                         }`}
                 >
-                    Em Andamento
+                    Orçamentos Abertos ({jobs.filter(j => j.status === 'open').length})
+                    {activeTab === 'requests' && <span className="absolute bottom-0 left-0 w-full h-0.5 bg-brand-primary rounded-t-full"></span>}
+                </button>
+                <button
+                    onClick={() => setActiveTab('active')}
+                    className={`pb-4 px-6 font-medium text-sm transition-colors whitespace-nowrap relative ${activeTab === 'active' ? 'text-brand-primary' : 'text-gray-500 hover:text-gray-700'
+                        }`}
+                >
+                    Agendados/Em Andamento
                     {activeTab === 'active' && <span className="absolute bottom-0 left-0 w-full h-0.5 bg-brand-primary rounded-t-full"></span>}
                 </button>
                 <button
                     onClick={() => setActiveTab('history')}
-                    className={`pb-4 px-6 font-medium text-sm transition-colors relative ${activeTab === 'history' ? 'text-brand-primary' : 'text-gray-500 hover:text-gray-700'
+                    className={`pb-4 px-6 font-medium text-sm transition-colors whitespace-nowrap relative ${activeTab === 'history' ? 'text-brand-primary' : 'text-gray-500 hover:text-gray-700'
                         }`}
                 >
                     Histórico
@@ -97,63 +168,113 @@ const ClientOrdersPage: React.FC = () => {
                 </button>
             </div>
 
-            {/* List */}
+            {/* Content */}
             <div className="space-y-6">
                 {loading ? (
-                    <div className="text-center py-10 text-gray-500">Carregando pedidos...</div>
-                ) : currentList.length === 0 ? (
-                    <div className="text-center py-10 bg-gray-50 rounded-lg">
-                        <p className="text-gray-500">Nenhum pedido encontrado nesta aba.</p>
-                    </div>
+                    <div className="text-center py-10 text-gray-500">Carregando...</div>
                 ) : (
-                    currentList.map(order => (
-                        <div key={order.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-                            <div className="flex justify-between items-start mb-4">
-                                <div>
-                                    <h3 className="font-bold text-lg text-gray-900">{order.companyName}</h3>
-                                    <p className="text-gray-600">{order.serviceName}</p>
+                    <>
+                        {/* REQUESTS TAB (JOBS) */}
+                        {activeTab === 'requests' && (
+                            jobs.length === 0 ? (
+                                <div className="text-center py-16 bg-gray-50 rounded-xl border border-dashed border-gray-300">
+                                    <h3 className="text-lg font-medium text-gray-900">Você ainda não pediu nenhum orçamento.</h3>
+                                    <p className="text-gray-500 mb-4">Publique sua primeira necessidade agora.</p>
+                                    <Button onClick={() => navigate('/cliente/novo-pedido')}>Solicitar Orçamento</Button>
                                 </div>
-                                <div className="text-right">
-                                    <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${order.status === 'confirmed' ? 'bg-blue-100 text-blue-700' :
-                                        order.status === 'completed' ? 'bg-green-100 text-green-700' :
-                                            'bg-gray-100 text-gray-700'
-                                        }`}>
-                                        {order.status === 'confirmed' ? 'Agendado' :
-                                            order.status === 'pending' ? 'Pendente' :
-                                                order.status}
-                                    </span>
-                                    <p className="text-sm font-bold mt-1">R$ {order.price?.toFixed(2)}</p>
-                                </div>
-                            </div>
+                            ) : (
+                                jobs.map(job => (
+                                    <div key={job.id} className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                                        <div className="p-6 cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => setExpandedJobId(expandedJobId === job.id ? null : job.id)}>
+                                            <div className="flex justify-between items-start">
+                                                <div>
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        <h3 className="font-bold text-lg text-gray-900">{job.title}</h3>
+                                                        <span className={`px-2 py-0.5 text-xs rounded-full ${job.status === 'open' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'
+                                                            }`}>
+                                                            {job.status === 'open' ? 'Aberto' : job.status}
+                                                        </span>
+                                                        {job.category && <span className="px-2 py-0.5 text-xs bg-gray-100 text-gray-600 rounded">{job.category.name}</span>}
+                                                    </div>
+                                                    <p className="text-gray-600 text-sm line-clamp-1">{job.description}</p>
+                                                    <div className="font-medium text-xs text-brand-primary mt-2">
+                                                        {job.proposals.length} propostas recebidas
+                                                    </div>
+                                                </div>
+                                                <div className="text-gray-400">
+                                                    {expandedJobId === job.id ? '▲' : '▼'}
+                                                </div>
+                                            </div>
+                                        </div>
 
-                            {/* Date Info */}
-                            <div className="flex gap-6 text-sm text-gray-500 mb-6">
-                                <div className="flex items-center gap-1">
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                                    {new Date(order.date).toLocaleDateString()}
-                                </div>
-                                <div className="flex items-center gap-1">
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                    {order.time === 'morning' ? 'Manhã' : order.time === 'afternoon' ? 'Tarde' : order.time === 'evening' ? 'Noite' : order.time}
-                                </div>
-                            </div>
+                                        {/* Proposals Expansion */}
+                                        {expandedJobId === job.id && (
+                                            <div className="bg-gray-50 p-6 border-t border-gray-200">
+                                                <ProposalList
+                                                    jobId={job.id}
+                                                    proposals={job.proposals}
+                                                    onProposalAccepted={handleAcceptProposal}
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
+                                ))
+                            )
+                        )}
 
-                            {/* Actions */}
-                            <div className="flex gap-3 justify-end pt-4 border-t border-gray-100">
-                                {activeTab === 'active' ? (
-                                    <>
-                                        <Button variant="secondary" size="sm">Ajuda</Button>
-                                    </>
-                                ) : (
-                                    <Button size="sm">Pedir de Novo</Button>
-                                )}
-                            </div>
-                        </div>
-                    ))
+                        {/* ACTIVE TAB (BOOKINGS) */}
+                        {activeTab === 'active' && (
+                            activeBookings.length === 0 ? (
+                                <div className="text-center py-10 bg-gray-50 rounded-lg text-gray-500">Nenhum serviço agendado no momento.</div>
+                            ) : (
+                                activeBookings.map(order => <BookingCard key={order.id} order={order} />)
+                            )
+                        )}
+
+                        {/* HISTORY TAB */}
+                        {activeTab === 'history' && (
+                            historyBookings.length === 0 ? (
+                                <div className="text-center py-10 bg-gray-50 rounded-lg text-gray-500">Histórico vazio.</div>
+                            ) : (
+                                historyBookings.map(order => <BookingCard key={order.id} order={order} />)
+                            )
+                        )}
+                    </>
                 )}
             </div>
         </div>
     );
 };
+
+// Helper Component for Booking Display
+const BookingCard: React.FC<{ order: BookingWithCompany }> = ({ order }) => (
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 mb-4">
+        <div className="flex justify-between items-start mb-4">
+            <div>
+                <h3 className="font-bold text-lg text-gray-900">{order.companyName}</h3>
+                <p className="text-gray-600">{order.serviceName}</p>
+            </div>
+            <div className="text-right">
+                <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide bg-gray-100 text-gray-700`}>
+                    {order.status === 'confirmed' ? 'Agendado' : order.status === 'pending' ? 'Pendente' : order.status}
+                </span>
+                <p className="text-sm font-bold mt-1">R$ {order.price?.toFixed(2)}</p>
+            </div>
+        </div>
+        <div className="flex gap-6 text-sm text-gray-500 mb-6">
+            <div className="flex items-center gap-1">
+                📅 {new Date(order.date).toLocaleDateString()}
+            </div>
+            {order.time && (
+                <div className="flex items-center gap-1">
+                    ⏰ {order.time}
+                </div>
+            )}
+        </div>
+        <div className="flex gap-3 justify-end pt-4 border-t border-gray-100">
+            <Button variant="secondary" size="sm">Ajuda</Button>
+        </div>
+    </div>
+);
 
 export default ClientOrdersPage;

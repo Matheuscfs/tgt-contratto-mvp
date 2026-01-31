@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { Helmet } from 'react-helmet-async';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import LoadingSkeleton from '../../components/ui/LoadingSkeleton';
@@ -152,6 +153,9 @@ const DashboardMensagensPage: React.FC = () => {
 
     return (
         <div className="h-[calc(100vh-100px)] flex bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
+            <Helmet>
+                <title>Mensagens | Dashboard TGT Contratto</title>
+            </Helmet>
             {/* Sidebar List */}
             <div className="w-1/3 border-r border-gray-100 flex flex-col">
                 <div className="p-4 border-b border-gray-100 bg-gray-50">
@@ -217,8 +221,8 @@ const DashboardMensagensPage: React.FC = () => {
                                     <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
                                         <div
                                             className={`max-w-[70%] px-4 py-2 rounded-2xl shadow-sm text-sm ${isMe
-                                                    ? 'bg-brand-primary text-white rounded-br-none'
-                                                    : 'bg-white text-gray-800 border border-gray-100 rounded-bl-none'
+                                                ? 'bg-brand-primary text-white rounded-br-none'
+                                                : 'bg-white text-gray-800 border border-gray-100 rounded-bl-none'
                                                 }`}
                                         >
                                             {msg.content}

@@ -26,3 +26,5 @@ dist-ssr
 # Antigravity Kit
 antigravity-kit-main/
 .vercel
+testsprite_tests/
+lint_report_utf8.json

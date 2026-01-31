@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
-import { UserProfile } from '../../types'; // Removed unused Booking
+import { UserProfile, Booking } from '../../types';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import { useToast } from '../../contexts/ToastContext';
@@ -13,12 +13,36 @@ const UserIcon = () => <svg className="w-5 h-5" fill="none" stroke="currentColor
 const CalendarIcon = () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>;
 const ChatIcon = () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" /></svg>;
 const SignOutIcon = () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>;
+const HeartIcon = () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>;
+
+interface Favorite {
+  id: string;
+  company: {
+    id: string;
+    name: string;
+    logo_url?: string;
+    description: string;
+    category: string;
+    rating: number;
+    review_count: number;
+    city: string;
+    state: string;
+  }
+}
+
+interface Conversation {
+  contactId: string;
+  lastMessage: string;
+  date: string;
+  unread: boolean;
+  name: string;
+}
 
 const ClientProfilePage: React.FC = () => {
   const { user, signOut } = useAuth();
   const { addToast } = useToast();
   const location = useLocation();
-  const [activeTab, setActiveTab] = useState<'profile' | 'bookings' | 'messages'>('bookings');
+  const [activeTab, setActiveTab] = useState<'profile' | 'bookings' | 'messages' | 'favorites'>('bookings');
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -32,12 +56,13 @@ const ClientProfilePage: React.FC = () => {
   const [profileData, setProfileData] = useState<UserProfile | null>(null);
 
   // Bookings State
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [bookings, setBookings] = useState<any[]>([]);
+  const [bookings, setBookings] = useState<Booking[]>([]);
 
   // Messages State (Simplified Conversation List)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [conversations, setConversations] = useState<any[]>([]);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+
+  // Favorites State
+  const [favorites, setFavorites] = useState<Favorite[]>([]);
 
   // -- FETCH DATA --
   useEffect(() => {
@@ -53,12 +78,17 @@ const ClientProfilePage: React.FC = () => {
           .eq('id', user.id)
           .single();
 
-        if (profile) setProfileData({ ...user, ...profile });
+        if (profile) {
+          setProfileData({ ...user, ...profile });
+        } else {
+          // Fallback if no profile exists yet
+          setProfileData({ ...user } as UserProfile);
+        }
 
         // 2. Fetch Bookings
         const { data: bookingsData } = await supabase
           .from('bookings')
-          .select('*, companies(company_name)')
+          .select('*, companies(name)')
           .eq('client_id', user.id)
           .order('created_at', { ascending: false });
 
@@ -71,6 +101,17 @@ const ClientProfilePage: React.FC = () => {
           .select('*')
           .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
           .order('created_at', { ascending: false });
+
+        // 4. Fetch Favorites
+        const { data: favoritesData } = await supabase
+          .from('favorites')
+          .select(`
+                *,
+                company:companies(id, name, logo_url, description, category, rating, review_count, city, state)
+            `)
+          .eq('user_id', user.id);
+
+        setFavorites(favoritesData || []);
 
         if (msgs) {
           // Determine unique contacts (Companies)
@@ -93,14 +134,13 @@ const ClientProfilePage: React.FC = () => {
           if (contactIdArray.length > 0) {
             const { data: companies } = await supabase
               .from('companies')
-              .select('id, company_name, profile_id')
+              .select('id, name, profile_id')
               .in('profile_id', contactIdArray);
 
             // Merge names
-            const finalConvos = convos.map(c => {
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              const comp = companies?.find((co: any) => co.profile_id === c.contactId);
-              return { ...c, name: comp?.company_name || 'Empresa Desconhecida' };
+            const finalConvos: Conversation[] = convos.map(c => {
+              const comp = companies?.find((co) => co.profile_id === c.contactId);
+              return { ...c, name: comp?.name || 'Empresa Desconhecida' };
             });
             setConversations(finalConvos);
           }
@@ -121,13 +161,22 @@ const ClientProfilePage: React.FC = () => {
     if (!user || !profileData) return;
     setLoading(true);
     try {
-      const { error } = await supabase.from('profiles').update({
+      const { error } = await supabase.from('profiles').upsert({
+        id: user.id,
+        email: user.email,
+        full_name: profileData.name, // Ensure consistency
         cpf: profileData.cpf,
         phone: profileData.phone,
+        date_of_birth: profileData.date_of_birth,
+        address_zip: profileData.address_zip,
         address_street: profileData.address_street,
+        address_number: profileData.address_number,
+        address_complement: profileData.address_complement,
+        address_neighborhood: profileData.address_neighborhood,
         address_city: profileData.address_city,
-        // Add other fields as needed
-      }).eq('id', user.id);
+        address_state: profileData.address_state,
+        updated_at: new Date().toISOString()
+      });
 
       if (error) throw error;
       addToast("Perfil atualizado!", "success");
@@ -173,6 +222,13 @@ const ClientProfilePage: React.FC = () => {
               >
                 <CalendarIcon />
                 <span className="ml-3">Meus Pedidos</span>
+              </button>
+              <button
+                onClick={() => setActiveTab('favorites')}
+                className={`flex items-center px-6 py-4 text-left transition-colors ${activeTab === 'favorites' ? 'bg-primary-50 text-brand-primary border-l-4 border-brand-primary font-medium' : 'text-gray-600 hover:bg-gray-50'}`}
+              >
+                <HeartIcon />
+                <span className="ml-3">Favoritos</span>
               </button>
               <button
                 onClick={() => setActiveTab('messages')}
@@ -228,7 +284,7 @@ const ClientProfilePage: React.FC = () => {
                         <div className="flex items-center justify-between">
                           <div>
                             <h4 className="text-lg font-semibold text-gray-900">{booking.service_title}</h4>
-                            <p className="text-gray-600 text-sm mb-1">Com: {booking.companies?.company_name}</p>
+                            <p className="text-gray-600 text-sm mb-1">Com: {booking.companies?.name}</p>
                             <p className="text-gray-500 text-xs">
                               Data: {new Date(booking.booking_date).toLocaleDateString()} • {booking.booking_time}
                             </p>
@@ -268,8 +324,7 @@ const ClientProfilePage: React.FC = () => {
               ) : (
                 <div className="bg-white rounded-xl shadow-sm overflow-hidden">
                   <ul className="divide-y divide-gray-100">
-                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                    {conversations.map((conv: any, idx) => (
+                    {conversations.map((conv, idx) => (
                       <li key={idx} className="p-6 hover:bg-gray-50 transition-colors">
                         <Link to="/minhas-mensagens" className="block"> {/* In real app, link to specific chat */}
                           <div className="flex items-center justify-between">
@@ -300,6 +355,52 @@ const ClientProfilePage: React.FC = () => {
             </div>
           )}
 
+
+
+          {/* FAVORITES TAB */}
+          {activeTab === 'favorites' && (
+            <div className="space-y-6">
+              <h2 className="text-2xl font-bold text-gray-800">Meus Favoritos</h2>
+              {favorites.length === 0 ? (
+                <div className="bg-white rounded-xl shadow-sm p-12 text-center">
+                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-400">
+                    <HeartIcon />
+                  </div>
+                  <p className="text-gray-500">Você ainda não favoritou nenhum profissional.</p>
+                  <Link to="/empresas" className="mt-4 inline-block text-brand-primary font-medium hover:underline">
+                    Explorar Profissionais
+                  </Link>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {favorites.map((fav) => (
+                    <div key={fav.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 hover:shadow-md transition-shadow">
+                      <div className="flex items-start gap-4">
+                        <img
+                          src={fav.company?.logo_url || 'https://via.placeholder.com/64'}
+                          alt={fav.company?.name}
+                          className="w-16 h-16 rounded-lg object-cover bg-gray-100"
+                        />
+                        <div className="flex-1">
+                          <h4 className="font-bold text-gray-900 line-clamp-1">{fav.company?.name}</h4>
+                          <p className="text-sm text-gray-500 mb-1">{fav.company?.category}</p>
+                          <div className="flex items-center text-xs text-gray-400 mb-2">
+                            <span>⭐ {fav.company?.rating?.toFixed(1) || 'N/A'}</span>
+                            <span className="mx-1">•</span>
+                            <span>{fav.company?.city} - {fav.company?.state}</span>
+                          </div>
+                          <Link to={`/empresa/${fav.company?.id}`} className="text-sm text-brand-primary font-medium hover:underline">
+                            Ver Perfil
+                          </Link>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* PROFILE DATA TAB */}
           {activeTab === 'profile' && profileData && (
             <div className="space-y-6">
@@ -322,14 +423,51 @@ const ClientProfilePage: React.FC = () => {
                       placeholder="(00) 00000-0000"
                     />
                     <Input
+                      label="Data de Nascimento"
+                      type="date"
+                      value={profileData.date_of_birth || ''}
+                      onChange={e => setProfileData({ ...profileData, date_of_birth: e.target.value })}
+                    />
+                    <div className="col-span-full border-t border-gray-100 pt-4 mt-2">
+                      <h3 className="text-sm font-semibold text-gray-900 mb-4">Endereço</h3>
+                    </div>
+                    <Input
+                      label="CEP"
+                      value={profileData.address_zip || ''}
+                      onChange={e => setProfileData({ ...profileData, address_zip: e.target.value })}
+                      placeholder="00000-000"
+                    />
+                    <Input
                       label="Rua"
                       value={profileData.address_street || ''}
                       onChange={e => setProfileData({ ...profileData, address_street: e.target.value })}
                     />
                     <Input
+                      label="Número"
+                      value={profileData.address_number || ''}
+                      onChange={e => setProfileData({ ...profileData, address_number: e.target.value })}
+                    />
+                    <Input
+                      label="Complemento"
+                      value={profileData.address_complement || ''}
+                      onChange={e => setProfileData({ ...profileData, address_complement: e.target.value })}
+                    />
+                    <Input
+                      label="Bairro"
+                      value={profileData.address_neighborhood || ''}
+                      onChange={e => setProfileData({ ...profileData, address_neighborhood: e.target.value })}
+                    />
+                    <Input
                       label="Cidade"
                       value={profileData.address_city || ''}
                       onChange={e => setProfileData({ ...profileData, address_city: e.target.value })}
+                    />
+                    <Input
+                      label="Estado (UF)"
+                      value={profileData.address_state || ''}
+                      onChange={e => setProfileData({ ...profileData, address_state: e.target.value })}
+                      placeholder="SP"
+                      maxLength={2}
                     />
                   </div>
                   <div className="pt-4 flex justify-end">
@@ -344,7 +482,7 @@ const ClientProfilePage: React.FC = () => {
 
         </div>
       </div>
-    </div>
+    </div >
   );
 };
 

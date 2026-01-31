@@ -17,8 +17,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let mounted = true;
+
     // Check active session
     supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!mounted) return;
+
       try {
         if (session?.user) {
           const userData: User = {
@@ -34,14 +38,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             const { data: companyData, error } = await supabase
               .from('companies')
               .select('slug')
-              .eq('profile_id', session.user.id)
+              .eq('owner_id', session.user.id)
               .maybeSingle(); // Use maybeSingle to avoid 406 if no row found
 
             if (error) {
               console.error("AuthContext: Error checking company existence", error);
             }
 
-            if (companyData) {
+            if (mounted && companyData) {
               userData.type = 'company'; // Force type to company if record exists
               userData.companySlug = companyData.slug;
             }
@@ -49,27 +53,27 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             console.error("AuthContext: Failed to fetch company data", companyError);
           }
 
-          setUser(userData);
+          if (mounted) setUser(userData);
         }
       } catch (err) {
         console.error("AuthContext: Unexpected error in session check", err);
       } finally {
-        setLoading(false);
+        if (mounted) setLoading(false);
       }
     }).catch(err => {
+      // Ignore AbortError which happens on strict mode re-renders
+      if (err.name === 'AbortError' || err.message?.includes('aborted')) return;
       console.error("AuthContext: Terminal error getting session", err);
-      setLoading(false);
+      if (mounted) setLoading(false);
     });
 
     // Listen for changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!mounted) return;
+
       // Handle programmatic redirects for password recovery
       if (event === 'PASSWORD_RECOVERY') {
         // This event comes from Supabase when a recovery link is clicked and session is established
-        // Must use window.location because navigate is not available outside component (unless we passed it or moved provider)
-        // Wait, we moved router OUTSIDE provider in previous step, so we CAN use useNavigate() if we hook it up,
-        // BUT useAuth is a hook used in components. AuthProvider component needs access to navigate.
-        // Since we can't use useNavigate inside the useEffect easily without it being a hook in the component body.
       }
 
       try {
@@ -87,7 +91,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             const { data: companyData } = await supabase
               .from('companies')
               .select('slug')
-              .eq('profile_id', session.user.id)
+              .eq('owner_id', session.user.id)
               .maybeSingle();
 
             if (companyData) {
@@ -98,18 +102,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             console.error("AuthContext: Failed to fetch company data on state change", companyError);
           }
 
-          setUser(userData);
+          if (mounted) setUser(userData);
         } else {
-          setUser(null);
+          if (mounted) setUser(null);
         }
       } catch (authStateError) {
         console.error("AuthContext: Error handling auth state change", authStateError);
       } finally {
-        setLoading(false);
+        if (mounted) setLoading(false);
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const login = async () => {

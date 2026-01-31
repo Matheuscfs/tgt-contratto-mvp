@@ -17,11 +17,21 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
     const { user } = useAuth();
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [loading, setLoading] = useState(true);
+    const isMounted = React.useRef(true);
+
+    useEffect(() => {
+        isMounted.current = true;
+        return () => {
+            isMounted.current = false;
+        };
+    }, []);
 
     useEffect(() => {
         if (!user) {
-            setNotifications([]);
-            setLoading(false);
+            if (isMounted.current) {
+                setNotifications([]);
+                setLoading(false);
+            }
             return;
         }
 
@@ -40,6 +50,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
                     filter: `user_id=eq.${user.id}`,
                 },
                 (payload) => {
+                    if (!isMounted.current) return;
                     if (payload.eventType === 'INSERT') {
                         setNotifications((prev) => [payload.new as Notification, ...prev]);
                     } else if (payload.eventType === 'UPDATE') {
@@ -70,11 +81,13 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
                 .limit(50);
 
             if (error) throw error;
-            setNotifications(data || []);
-        } catch (error) {
+            if (isMounted.current) setNotifications(data || []);
+        } catch (err) {
+            const error = err as Error;
+            if (error.name === 'AbortError' || error.message?.includes('aborted')) return;
             console.error('Error fetching notifications:', error);
         } finally {
-            setLoading(false);
+            if (isMounted.current) setLoading(false);
         }
     };
 
@@ -87,9 +100,11 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
 
             if (error) throw error;
 
-            setNotifications((prev) =>
-                prev.map((n) => (n.id === id ? { ...n, read: true } : n))
-            );
+            if (isMounted.current) {
+                setNotifications((prev) =>
+                    prev.map((n) => (n.id === id ? { ...n, read: true } : n))
+                );
+            }
         } catch (error) {
             console.error('Error marking notification as read:', error);
         }
@@ -107,9 +122,11 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
 
             if (error) throw error;
 
-            setNotifications((prev) =>
-                prev.map((n) => ({ ...n, read: true }))
-            );
+            if (isMounted.current) {
+                setNotifications((prev) =>
+                    prev.map((n) => ({ ...n, read: true }))
+                );
+            }
         } catch (error) {
             console.error('Error marking all notifications as read:', error);
         }

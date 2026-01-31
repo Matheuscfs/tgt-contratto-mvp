@@ -57,52 +57,52 @@ async function generateSitemap() {
                 lastmod: new Date().toISOString().split('T')[0]
             },
             {
-                loc: `${baseUrl}/#/empresas`,
+                loc: `${baseUrl}/empresas`,
                 changefreq: 'daily',
                 priority: 0.9
             },
             {
-                loc: `${baseUrl}/#/para-empresas`,
+                loc: `${baseUrl}/para-empresas`,
                 changefreq: 'weekly',
                 priority: 0.7
             },
             {
-                loc: `${baseUrl}/#/sobre`,
+                loc: `${baseUrl}/sobre`,
                 changefreq: 'monthly',
                 priority: 0.6
             },
             {
-                loc: `${baseUrl}/#/contato`,
+                loc: `${baseUrl}/contato`,
                 changefreq: 'monthly',
                 priority: 0.6
             },
             {
-                loc: `${baseUrl}/#/ajuda`,
+                loc: `${baseUrl}/ajuda`,
                 changefreq: 'monthly',
                 priority: 0.5
             },
             {
-                loc: `${baseUrl}/#/privacidade`,
+                loc: `${baseUrl}/privacidade`,
                 changefreq: 'yearly',
                 priority: 0.3
             },
             {
-                loc: `${baseUrl}/#/termos`,
+                loc: `${baseUrl}/termos`,
                 changefreq: 'yearly',
                 priority: 0.3
             },
             {
-                loc: `${baseUrl}/#/auth/login`,
+                loc: `${baseUrl}/auth/login`,
                 changefreq: 'monthly',
                 priority: 0.4
             },
             {
-                loc: `${baseUrl}/#/auth/register`,
+                loc: `${baseUrl}/auth/register`,
                 changefreq: 'monthly',
                 priority: 0.4
             },
             {
-                loc: `${baseUrl}/#/empresa/cadastro`,
+                loc: `${baseUrl}/empresa/cadastro`,
                 changefreq: 'monthly',
                 priority: 0.8
             }
@@ -112,7 +112,7 @@ async function generateSitemap() {
         if (companies) {
             companies.forEach((company) => {
                 urls.push({
-                    loc: `${baseUrl}/#/empresa/${company.slug}`,
+                    loc: `${baseUrl}/empresa/${company.slug}`,
                     lastmod: company.created_at ? new Date(company.created_at).toISOString().split('T')[0] : undefined,
                     changefreq: 'weekly',
                     priority: 0.9

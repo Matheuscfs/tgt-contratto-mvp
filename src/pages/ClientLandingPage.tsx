@@ -9,6 +9,7 @@ import OptimizedImage from '../components/ui/OptimizedImage';
 import AnimatedSection from '../components/ui/AnimatedSection';
 // import ReorderCarousel from '../components/client/ReorderCarousel';
 
+import { Helmet } from 'react-helmet-async';
 
 const SearchIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>;
 const CompareIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
@@ -20,6 +21,14 @@ const ClientLandingPage: React.FC = () => {
 
   return (
     <div className="bg-white text-gray-800">
+      <Helmet>
+        <title>TGT Contratto | Guia de Negócios e Serviços em Cascavel</title>
+        <meta name="description" content="Explore as melhores empresas e serviços em Cascavel e região. TGT Contratto conecta você com profissionais de contabilidade, engenharia, estética e muito mais." />
+        <meta name="keywords" content="TGT, Contratto, empresas em cascavel, serviços cascavel, contabilidade cascavel, engenharia cascavel, cabelereiros cascavel" />
+        <meta property="og:title" content="TGT Contratto | Guia de Negócios Locais" />
+        <meta property="og:description" content="Encontre profissionais verificados em Cascavel. Qualidade e confiança perto de você." />
+        <link rel="canonical" href="https://tgt-guia-de-negocios.vercel.app/" />
+      </Helmet>
       {/* Hero Section */}
       <HeroSection />
 
@@ -101,20 +110,20 @@ const ClientLandingPage: React.FC = () => {
               <p className="text-brand-accent/80 text-lg mb-6 leading-relaxed">
                 Nossa missão é fortalecer o comércio local. Sem algoritmos opacos, apenas conexões reais entre quem precisa e quem resolve.
               </p>
-              <Button variant="secondary" className="border-white text-white hover:bg-white hover:text-brand-secondary">
+              <Button variant="outline" className="border-white text-white hover:bg-white hover:text-brand-secondary">
                 Assista ao Manifesto
               </Button>
             </AnimatedSection>
 
-            <AnimatedSection delay={0.2} className="order-1 md:order-2 relative aspect-video bg-black rounded-sharp overflow-hidden group cursor-pointer shadow-2xl">
-              <OptimizedImage src="https://picsum.photos/seed/videobg/800/450" alt="Video placeholder" className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-40 transition-opacity duration-500" />
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="w-20 h-20 bg-brand-primary rounded-full flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-white ml-1" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
-                  </svg>
-                </div>
-              </div>
+            <AnimatedSection delay={0.2} className="order-1 md:order-2 relative aspect-video bg-black rounded-sharp overflow-hidden group shadow-2xl">
+              <video
+                src="/out_final.mp4"
+                autoPlay
+                loop
+                muted
+                playsInline
+                className="absolute inset-0 w-full h-full object-cover"
+              />
             </AnimatedSection>
           </div>
         </div>

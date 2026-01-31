@@ -40,6 +40,7 @@ const DashboardLayout: React.FC = () => {
 
   const navigation = [
     { name: 'Visão Geral', href: `/dashboard/empresa/${company.slug}`, end: true },
+    { name: 'Oportunidades', href: `/dashboard/empresa/${company.slug}/oportunidades` }, // [NEW]
     { name: 'Agendamentos', href: `/dashboard/empresa/${company.slug}/agendamentos` },
     { name: 'Agenda', href: `/dashboard/empresa/${company.slug}/agenda` },
     { name: 'Serviços', href: `/dashboard/empresa/${company.slug}/servicos` },

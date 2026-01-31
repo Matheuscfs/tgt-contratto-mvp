@@ -5,6 +5,7 @@ import { useCompany } from '../../contexts/CompanyContext';
 import OptimizedImage from '../ui/OptimizedImage';
 import { useOnClickOutside } from '../../hooks/useOnClickOutside';
 import { AnimatePresence, motion } from 'framer-motion';
+import NotificationsDropdown from './NotificationsDropdown';
 
 const HeaderOptimized: React.FC = () => {
     const { user, logout } = useAuth();
@@ -13,10 +14,13 @@ const HeaderOptimized: React.FC = () => {
 
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
+    const [isLoginDropdownOpen, setIsLoginDropdownOpen] = useState(false);
 
     const userDropdownRef = useRef<HTMLDivElement>(null);
+    const loginDropdownRef = useRef<HTMLDivElement>(null);
 
     useOnClickOutside(userDropdownRef, () => setIsUserDropdownOpen(false));
+    useOnClickOutside(loginDropdownRef, () => setIsLoginDropdownOpen(false));
 
     const handleLogout = () => {
         logout();
@@ -27,6 +31,7 @@ const HeaderOptimized: React.FC = () => {
     React.useEffect(() => {
         setIsMobileMenuOpen(false);
         setIsUserDropdownOpen(false);
+        setIsLoginDropdownOpen(false);
     }, [navigate]);
 
     return (
@@ -40,17 +45,14 @@ const HeaderOptimized: React.FC = () => {
                         </Link>
                     </div>
 
-                    {/* Desktop Navigation - OPTIMIZED */}
+                    {/* Desktop Navigation */}
                     <nav className="hidden md:flex items-center space-x-6">
-                        {/* 1. Buscar Empresas */}
                         <Link
                             to="/empresas"
                             className="text-gray-600 hover:text-brand-primary font-medium transition-colors text-sm"
                         >
                             Buscar Empresas
                         </Link>
-
-                        {/* 2. Para Empresas */}
                         <Link
                             to="/para-empresas"
                             className="text-gray-600 hover:text-brand-primary font-medium transition-colors text-sm"
@@ -61,7 +63,6 @@ const HeaderOptimized: React.FC = () => {
 
                     {/* Desktop Actions */}
                     <div className="hidden md:flex items-center gap-4">
-                        {/* 4. Publicar Grátis (if not logged in) */}
                         {!user && (
                             <Link
                                 to="/empresa/cadastro"
@@ -71,88 +72,133 @@ const HeaderOptimized: React.FC = () => {
                             </Link>
                         )}
 
-                        {/* 5. User Menu or Login */}
                         {user ? (
-                            <div className="relative" ref={userDropdownRef}>
+                            <div className="flex items-center gap-2">
+                                <NotificationsDropdown />
+
+                                <div className="relative" ref={userDropdownRef}>
+                                    <button
+                                        onClick={() => setIsUserDropdownOpen(!isUserDropdownOpen)}
+                                        className="flex items-center gap-2 focus:outline-none group min-h-[44px] min-w-[44px]"
+                                        aria-label="Menu do usuário"
+                                    >
+                                        <OptimizedImage
+                                            className="h-9 w-9 rounded-full object-cover ring-2 ring-transparent group-hover:ring-brand-primary/20 transition-all"
+                                            src={(user.type === 'company' && company?.logo_url) || user.avatar || `https://i.pravatar.cc/150?u=${user.id}`}
+                                            alt={(user.type === 'company' && company?.company_name) || user.name}
+                                        />
+                                        <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900 transition-colors max-w-[100px] truncate">
+                                            {(user.type === 'company' && company?.company_name) || user.name.split(' ')[0]}
+                                        </span>
+                                        <svg className={`h-4 w-4 text-gray-400 transition-transform duration-200 ${isUserDropdownOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                        </svg>
+                                    </button>
+
+                                    <AnimatePresence>
+                                        {isUserDropdownOpen && (
+                                            <motion.div
+                                                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                                exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                                transition={{ duration: 0.1 }}
+                                                className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl ring-1 ring-black/5 py-2 z-50"
+                                            >
+                                                <div className="px-4 py-2 border-b border-gray-50">
+                                                    <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Minha Conta</p>
+                                                </div>
+
+                                                {user.type === 'client' && (
+                                                    <>
+                                                        <Link to="/perfil/cliente" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                                                            Meu Perfil
+                                                        </Link>
+                                                        <Link to="/favoritos" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                                                            Favoritos
+                                                        </Link>
+                                                        <Link to="/perfil/cliente" state={{ activeTab: 'messages' }} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                                                            Mensagens
+                                                        </Link>
+                                                        <Link to="/perfil/pedidos" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                                                            Meus Pedidos
+                                                        </Link>
+                                                    </>
+                                                )}
+                                                {user.type === 'company' && (
+                                                    <>
+                                                        <Link to={user.companySlug ? `/dashboard/empresa/${user.companySlug}` : "/empresa/cadastro"} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                                                            Dashboard
+                                                        </Link>
+                                                        <Link to={company?.slug ? `/empresa/${company.slug}` : "/empresa/meu-negocio"} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                                                            Ver Página Pública
+                                                        </Link>
+                                                    </>
+                                                )}
+
+                                                <div className="border-t border-gray-50 mt-1 pt-1">
+                                                    <button
+                                                        onClick={handleLogout}
+                                                        className="w-full text-left block px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors font-medium"
+                                                    >
+                                                        Sair
+                                                    </button>
+                                                </div>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="relative" ref={loginDropdownRef}>
                                 <button
-                                    onClick={() => setIsUserDropdownOpen(!isUserDropdownOpen)}
-                                    className="flex items-center gap-2 focus:outline-none group min-h-[44px] min-w-[44px]"
-                                    aria-label="Menu do usuário"
+                                    onClick={() => setIsLoginDropdownOpen(!isLoginDropdownOpen)}
+                                    className="bg-brand-primary text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-brand-primary/90 transition-all shadow-md shadow-brand-primary/20 hover:shadow-lg hover:shadow-brand-primary/30 active:scale-95 min-h-[44px] flex items-center gap-2"
                                 >
-                                    <OptimizedImage
-                                        className="h-9 w-9 rounded-full object-cover ring-2 ring-transparent group-hover:ring-brand-primary/20 transition-all"
-                                        src={(user.type === 'company' && company?.logo_url) || user.avatar || `https://i.pravatar.cc/150?u=${user.id}`}
-                                        alt={(user.type === 'company' && company?.company_name) || user.name}
-                                    />
-                                    <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900 transition-colors max-w-[100px] truncate">
-                                        {(user.type === 'company' && company?.company_name) || user.name.split(' ')[0]}
-                                    </span>
-                                    <svg className={`h-4 w-4 text-gray-400 transition-transform duration-200 ${isUserDropdownOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    Entrar
+                                    <svg className={`h-4 w-4 transition-transform duration-200 ${isLoginDropdownOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                                     </svg>
                                 </button>
 
                                 <AnimatePresence>
-                                    {isUserDropdownOpen && (
+                                    {isLoginDropdownOpen && (
                                         <motion.div
                                             initial={{ opacity: 0, y: 10, scale: 0.95 }}
                                             animate={{ opacity: 1, y: 0, scale: 1 }}
                                             exit={{ opacity: 0, y: 10, scale: 0.95 }}
                                             transition={{ duration: 0.1 }}
-                                            className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl ring-1 ring-black/5 py-2 z-50"
+                                            className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl ring-1 ring-black/5 py-2 z-50 pointer-events-auto"
                                         >
                                             <div className="px-4 py-2 border-b border-gray-50">
-                                                <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Minha Conta</p>
+                                                <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Como você deseja entrar?</p>
                                             </div>
-
-                                            {user.type === 'client' && (
-                                                <>
-                                                    <Link to="/perfil/cliente" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                                                        Meu Perfil
-                                                    </Link>
-                                                    <Link to="/favoritos" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                                                        Favoritos
-                                                    </Link>
-                                                    <Link to="/perfil/cliente" state={{ activeTab: 'messages' }} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                                                        Mensagens
-                                                    </Link>
-                                                </>
-                                            )}
-                                            {user.type === 'company' && (
-                                                <>
-                                                    <Link to={user.companySlug ? `/dashboard/empresa/${user.companySlug}` : "/empresa/cadastro"} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                                                        Dashboard
-                                                    </Link>
-                                                    <Link to={company?.slug ? `/empresa/${company.slug}` : "/empresa/meu-negocio"} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                                                        Ver Página Pública
-                                                    </Link>
-                                                </>
-                                            )}
-
-                                            <div className="border-t border-gray-50 mt-1 pt-1">
-                                                <button
-                                                    onClick={handleLogout}
-                                                    className="w-full text-left block px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors font-medium"
-                                                >
-                                                    Sair
-                                                </button>
-                                            </div>
+                                            <Link
+                                                to="/login/cliente"
+                                                className="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                                                onClick={() => setIsLoginDropdownOpen(false)}
+                                            >
+                                                <span className="font-semibold block text-brand-primary">Sou Cliente</span>
+                                                <span className="text-xs text-gray-500">Busco serviços e produtos</span>
+                                            </Link>
+                                            <Link
+                                                to="/login/empresa"
+                                                className="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors border-t border-gray-50"
+                                                onClick={() => setIsLoginDropdownOpen(false)}
+                                            >
+                                                <span className="font-semibold block text-brand-primary">Sou Profissional</span>
+                                                <span className="text-xs text-gray-500">Quero oferecer meus serviços</span>
+                                            </Link>
                                         </motion.div>
                                     )}
                                 </AnimatePresence>
                             </div>
-                        ) : (
-                            <Link
-                                to="/auth/login"
-                                className="bg-brand-primary text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-brand-primary/90 transition-all shadow-md shadow-brand-primary/20 hover:shadow-lg hover:shadow-brand-primary/30 active:scale-95 min-h-[44px] flex items-center"
-                            >
-                                Entrar
-                            </Link>
                         )}
                     </div>
 
-                    {/* Mobile Menu Button */}
-                    <div className="md:hidden flex items-center">
+                    {/* Mobile Actions (Notifications + Burger) */}
+                    <div className="md:hidden flex items-center gap-2">
+                        {user && <NotificationsDropdown />}
+
                         <button
                             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                             className="p-2 rounded-lg text-gray-600 hover:bg-gray-100 hover:text-brand-primary focus:outline-none transition-colors min-h-[44px] min-w-[44px]"
@@ -257,6 +303,9 @@ const HeaderOptimized: React.FC = () => {
                                                     <Link to="/minhas-mensagens" onClick={() => setIsMobileMenuOpen(false)} className="block px-3 py-2 text-base font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg min-h-[44px] flex items-center">
                                                         Mensagens
                                                     </Link>
+                                                    <Link to="/perfil/pedidos" onClick={() => setIsMobileMenuOpen(false)} className="block px-3 py-2 text-base font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg min-h-[44px] flex items-center">
+                                                        Meus Pedidos
+                                                    </Link>
                                                 </>
                                             ) : (
                                                 <>
@@ -274,11 +323,18 @@ const HeaderOptimized: React.FC = () => {
                                         </div>
                                     ) : (
                                         <div className="grid gap-3">
-                                            <Link to="/auth/login" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center justify-center w-full px-4 py-3 border border-transparent rounded-xl shadow-sm text-base font-medium text-white bg-brand-primary hover:bg-brand-primary/90 min-h-[44px]">
-                                                Entrar
-                                            </Link>
-                                            <Link to="/auth/register" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center justify-center w-full px-4 py-3 border border-brand-primary text-brand-primary rounded-xl font-medium hover:bg-brand-primary/5 min-h-[44px]">
-                                                Criar Conta
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <Link to="/login/cliente" onClick={() => setIsMobileMenuOpen(false)} className="flex flex-col items-center justify-center px-2 py-3 border border-gray-200 rounded-xl shadow-sm bg-white hover:bg-gray-50 min-h-[80px]">
+                                                    <span className="text-sm font-bold text-gray-900">Sou Cliente</span>
+                                                    <span className="text-xs text-gray-500 text-center leading-tight mt-1">Busco serviços</span>
+                                                </Link>
+                                                <Link to="/login/empresa" onClick={() => setIsMobileMenuOpen(false)} className="flex flex-col items-center justify-center px-2 py-3 border border-gray-200 rounded-xl shadow-sm bg-white hover:bg-gray-50 min-h-[80px]">
+                                                    <span className="text-sm font-bold text-gray-900">Sou Profissional</span>
+                                                    <span className="text-xs text-gray-500 text-center leading-tight mt-1">Ofereço serviços</span>
+                                                </Link>
+                                            </div>
+                                            <Link to="/cadastro/cliente" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center justify-center w-full px-4 py-3 border border-brand-primary text-brand-primary rounded-xl font-medium hover:bg-brand-primary/5 min-h-[44px]">
+                                                Criar Conta Grátis
                                             </Link>
                                         </div>
                                     )}

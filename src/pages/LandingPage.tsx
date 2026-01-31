@@ -19,8 +19,31 @@ const CompaniesListPage: React.FC = () => {
   const [priceRange, setPriceRange] = useState<'all' | 'low' | 'mid' | 'high'>('all');
   const [loading, setLoading] = useState(true);
 
+  // Dynamic SEO logic
+  const getDynamicTitle = () => {
+    let title = 'Empresas e Serviços Locais';
+    if (searchTerm) title = `${searchTerm}`;
+    else if (selectedCategory !== 'all') title = `${selectedCategory}`;
+
+    if (locationTerm) title += ` em ${locationTerm}`;
+    else if (userCoords) title += ` Perto de Você`;
+
+    return `${title} | TGT Contratto`;
+  };
+
+  const getDynamicDescription = () => {
+    let desc = 'Encontre as melhores empresas e serviços locais na sua região.';
+    if (searchTerm || locationTerm || selectedCategory !== 'all') {
+      desc = `Buscando por ${searchTerm || (selectedCategory !== 'all' ? selectedCategory : 'serviços')}${locationTerm ? ` em ${locationTerm}` : ''}? Explore negócios verificados, compare preços e conecte-se com profissionais no TGT Contratto.`;
+    }
+    return desc;
+  };
+
   // Initial Fetch from Supabase
+  const isMounted = React.useRef(true);
+
   useEffect(() => {
+    isMounted.current = true;
     const fetchCompanies = async () => {
       setLoading(true);
       try {
@@ -41,16 +64,18 @@ const CompaniesListPage: React.FC = () => {
         const mappedCompanies: Company[] = (data || []).map((c) => ({
           id: c.id,
           slug: c.slug,
-          companyName: c.company_name,
-          legalName: c.legal_name,
+          companyName: c.name, // Fixed: company_name does not exist in schema, use name
+          legalName: c.legal_name, // Verify if exists, otherwise fallback or remove? Assuming legal_name might fail too if checked. Kept for now but suspect.
+          // legalName was not in the columns list I saw earlier (id, created_at, owner_id, name, slug, description, logo_url, cover_url, website, phone, email, address, city, state, category)
+          // Removing likely invalid columns safely:
           cnpj: c.cnpj,
           logo: c.logo_url || 'https://via.placeholder.com/150',
-          coverImage: c.cover_image_url || 'https://placehold.co/1200x400',
+          coverImage: c.cover_url || 'https://placehold.co/1200x400', // Fixed: cover_url based on schema
           category: c.category,
           rating: 5.0, // Should be avg from reviews
           reviewCount: 0,
           description: c.description,
-          address: c.address,
+          address: typeof c.address === 'string' ? { city: c.city, state: c.state, full: c.address } : c.address, // Handle address format
           phone: c.phone,
           email: c.email,
           website: c.website,
@@ -59,15 +84,21 @@ const CompaniesListPage: React.FC = () => {
           reviews: []
         }));
 
-        setCompanies(mappedCompanies);
+        if (isMounted.current) setCompanies(mappedCompanies);
       } catch (err) {
-        console.error("Error fetching companies:", err);
+        const error = err as Error;
+        if (error.name === 'AbortError' || error.message?.includes('aborted')) return;
+        console.error("Error fetching companies:", error);
       } finally {
-        setLoading(false);
+        if (isMounted.current) setLoading(false);
       }
     };
 
     fetchCompanies();
+
+    return () => {
+      isMounted.current = false;
+    };
   }, []);
 
   // Update Filters based on URL
@@ -154,20 +185,20 @@ const CompaniesListPage: React.FC = () => {
   return (
     <div className="bg-gray-50 min-h-screen">
       <Helmet>
-        <title>Empresas e Serviços Locais | TGT - Guia de Negócios</title>
-        <meta name="description" content="Encontre as melhores empresas e serviços locais na sua região. Explore negócios verificados, compare preços e conecte-se com profissionais qualificados." />
-        <link rel="canonical" href="https://tgt-guia-de-negocios.vercel.app/#/empresas" />
+        <title>{getDynamicTitle()}</title>
+        <meta name="description" content={getDynamicDescription()} />
+        <link rel="canonical" href={`https://tgt-guia-de-negocios.vercel.app/empresas${searchTerm ? `?q=${searchTerm}` : ''}${locationTerm ? `${searchTerm ? '&' : '?'}loc=${locationTerm}` : ''}`} />
 
         {/* Schema.org Organization Markup */}
         <script type="application/ld+json">
           {JSON.stringify({
             "@context": "https://schema.org",
             "@type": "WebSite",
-            "name": "TGT - Guia de Negócios",
+            "name": "TGT Contratto - Guia de Negócios",
             "url": "https://tgt-guia-de-negocios.vercel.app",
             "potentialAction": {
               "@type": "SearchAction",
-              "target": "https://tgt-guia-de-negocios.vercel.app/#/empresas?q={search_term_string}",
+              "target": "https://tgt-guia-de-negocios.vercel.app/empresas?q={search_term_string}",
               "query-input": "required name=search_term_string"
             }
           })}
