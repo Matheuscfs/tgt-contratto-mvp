@@ -22,7 +22,8 @@ const ForgotPasswordPage: React.FC = () => {
             if (error) throw error;
 
             addToast('Se o e-mail estiver cadastrado, você receberá um link de recuperação.', 'success');
-        } catch (error: any) {
+        } catch (err: unknown) {
+            const error = err as Error;
             console.error('Error sending reset password email:', error);
             addToast(error.message || 'Erro ao enviar e-mail de recuperação.', 'error');
         } finally {

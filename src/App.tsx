@@ -69,8 +69,8 @@ const MainRoutes = () => {
         <Route path="/empresa/:slug" element={<AnimatedElement><CompanyProfilePage /></AnimatedElement>} />
         <Route path="/auth/register" element={<AnimatedElement><RegisterPage /></AnimatedElement>} />
         <Route path="/auth/login" element={<AnimatedElement><LoginPage /></AnimatedElement>} />
-        <Route path="/auth/forgot-password" element={<AnimatedElement><ForgotPasswordPage /></AnimatedElement>} />
-        <Route path="/auth/reset-password" element={<AnimatedElement><ResetPasswordPage /></AnimatedElement>} />
+        <Route path="/auth/forgot-password" element={<AnimatedElement><Suspense fallback={<LoadingSpinner />}><ForgotPasswordPage /></Suspense></AnimatedElement>} />
+        <Route path="/auth/reset-password" element={<AnimatedElement><Suspense fallback={<LoadingSpinner />}><ResetPasswordPage /></Suspense></AnimatedElement>} />
         <Route path="/empresa/cadastro" element={<AnimatedElement><CompanyRegistrationPage /></AnimatedElement>} />
         <Route path="/agendamento/confirmacao" element={<AnimatedElement><BookingConfirmationPage /></AnimatedElement>} />
 

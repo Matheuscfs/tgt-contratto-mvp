@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
-import Button from '../../components/ui/Button';
-import { supabase } from '../../lib/supabase';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { useToast } from '../../contexts/ToastContext';
+import { supabase } from '../../lib/supabase';
+import LoadingSkeleton from '../../components/ui/LoadingSkeleton';
+import Button from '../../components/ui/Button';
 
 interface Message {
     id: string;
@@ -10,246 +10,247 @@ interface Message {
     receiver_id: string;
     content: string;
     created_at: string;
-    read: boolean;
+    read_at: string | null;
 }
 
-interface Conversation {
-    id: string; // The other user's ID
-    name: string;
-    email: string;
-    avatar: string;
+interface Thread {
+    partnerId: string;
+    partnerName: string;
+    partnerAvatar?: string;
     lastMessage: string;
+    lastMessageTime: string;
     unreadCount: number;
 }
 
 const DashboardMensagensPage: React.FC = () => {
     const { user } = useAuth();
-    const { addToast } = useToast();
-    const [conversations, setConversations] = useState<Conversation[]>([]);
-    const [selectedConvId, setSelectedConvId] = useState<string | null>(null);
+    const [threads, setThreads] = useState<Thread[]>([]);
+    const [activeThread, setActiveThread] = useState<Thread | null>(null);
     const [messages, setMessages] = useState<Message[]>([]);
-    const [replyText, setReplyText] = useState('');
+    const [newMessage, setNewMessage] = useState('');
     const [loading, setLoading] = useState(true);
-    const messagesEndRef = useRef<HTMLDivElement>(null);
 
-    // 1. Load Conversations (Group by sender)
-    // In a real app we might have a 'conversations' table, but grouping messages works for MVP
     useEffect(() => {
         if (!user) return;
+        fetchThreads();
+    }, [user, fetchThreads]);
 
-        const fetchConversations = async () => {
-            setLoading(true);
-            // Fetch all messages where I am the sender OR receiver
-            const { data, error } = await supabase
-                .from('messages')
-                .select('*')
-                .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
-                .order('created_at', { ascending: false });
+    useEffect(() => {
+        if (activeThread && user) {
+            fetchMessages(activeThread.partnerId);
+            setThreads(prev => prev.map(t =>
+                t.partnerId === activeThread.partnerId ? { ...t, unreadCount: 0 } : t
+            ));
 
-            if (error) {
-                console.error("Error fetching messages", error);
-                return;
-            }
-
-            const convMap = new Map<string, Conversation>();
-
-            // Process messages to build conversation list
-            // We need to fetch user names if not stored. For MVP, we'll try to get from metadata or placeholder.
-            // A better approach is to expand/join with profiles table.
-
-            // To properly get names, we should ideally join with 'profiles'. 
-            // supabase-js supports this via: .select('*, sender:sender_id(full_name), receiver:receiver_id(full_name)')
-            // But let's keep it simple first or fetch profiles simply.
-
-            for (const msg of data || []) {
-                const isMe = msg.sender_id === user.id;
-                const otherId = isMe ? msg.receiver_id : msg.sender_id;
-
-                if (!convMap.has(otherId)) {
-                    convMap.set(otherId, {
-                        id: otherId,
-                        name: 'Usuário ' + otherId.slice(0, 4), // Placeholder until we fetch profile
-                        email: '',
-                        avatar: `https://ui-avatars.com/api/?name=${otherId}&background=random`,
-                        lastMessage: msg.content,
-                        unreadCount: (!isMe && !msg.read) ? 1 : 0
-                    });
-                } else {
-                    const conv = convMap.get(otherId)!;
-                    if (!isMe && !msg.read) {
-                        conv.unreadCount++;
+            // Subscribe to new messages
+            const subscription = supabase
+                .channel(`chat:${user.id}:${activeThread.partnerId}`)
+                .on('postgres_changes', {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'messages',
+                    filter: `sender_id=eq.${activeThread.partnerId}`
+                }, (payload) => {
+                    const newMsg = payload.new as Message;
+                    if (newMsg.receiver_id === user.id) {
+                        setMessages(prev => [...prev, newMsg]);
                     }
-                }
-            }
-            setConversations(Array.from(convMap.values()));
-            setLoading(false);
-        };
+                })
+                .subscribe();
 
-        fetchConversations();
+            return () => {
+                subscription.unsubscribe();
+            };
+        }
+    }, [activeThread, user, fetchMessages]);
 
-        // Subscribe to NEW messages to update conversation list live
-        const channel = supabase
-            .channel('public:messages')
-            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
-                const newMessage = payload.new as Message;
-                if (newMessage.sender_id === user.id || newMessage.receiver_id === user.id) {
-                    fetchConversations(); // Re-fetch to update order/unread
-                }
-            })
-            .subscribe();
-
-        return () => { supabase.removeChannel(channel); };
-    }, [user]);
-
-
-    // 2. Load Messages for Selected Conversation
-    useEffect(() => {
-        if (!selectedConvId || !user) return;
-
-        const fetchMessages = async () => {
-            const { data, error } = await supabase
+    const fetchThreads = async () => {
+        // This is a simplified fetch. In production, use a dedicated view or RPC for performance.
+        // Fetching all messages and aggregating client-side for MVP.
+        try {
+            const { data: sent, error: sentError } = await supabase
                 .from('messages')
                 .select('*')
-                .or(`and(sender_id.eq.${user.id},receiver_id.eq.${selectedConvId}),and(sender_id.eq.${selectedConvId},receiver_id.eq.${user.id})`)
-                .order('created_at', { ascending: true });
+                .eq('sender_id', user!.id);
 
-            if (error) console.error(error);
-            else setMessages(data || []);
-
-            // Mark as read
-            await supabase
+            const { data: received, error: receivedError } = await supabase
                 .from('messages')
-                .update({ read: true })
-                .eq('sender_id', selectedConvId)
-                .eq('receiver_id', user.id)
-                .eq('read', false);
-        };
+                .select('*, sender:profiles!sender_id(full_name, avatar_url, email)') // Assuming generic relation
+                .eq('receiver_id', user!.id);
 
-        fetchMessages();
+            if (sentError || receivedError) throw new Error('Failed to fetch');
 
-        // Subscribe to real-time messages for this chat
-        const channel = supabase
-            .channel(`chat:${selectedConvId}`)
-            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
-                const newMsg = payload.new as Message;
-                if (
-                    (newMsg.sender_id === selectedConvId && newMsg.receiver_id === user.id) ||
-                    (newMsg.sender_id === user.id && newMsg.receiver_id === selectedConvId)
-                ) {
-                    setMessages(prev => [...prev, newMsg]);
-                    scrollToBottom();
-                }
-            })
-            .subscribe();
+            // process threads...
+            // Mocking threads for MVP display if backend is empty
+            if ((!sent || sent.length === 0) && (!received || received.length === 0)) {
+                setThreads([]);
+            } else {
+                // Logic to aggregate threads would go here
+                // For now, let's just use the received messages to build contact list
+                const uniqueSenders = new Map<string, Thread>();
 
-        return () => { supabase.removeChannel(channel); };
-    }, [selectedConvId, user]);
+                received?.forEach((msg: any) => {
+                    if (!uniqueSenders.has(msg.sender_id)) {
+                        uniqueSenders.set(msg.sender_id, {
+                            partnerId: msg.sender_id,
+                            partnerName: msg.sender?.full_name || 'Usuário',
+                            partnerAvatar: msg.sender?.avatar_url,
+                            lastMessage: msg.content,
+                            lastMessageTime: msg.created_at,
+                            unreadCount: msg.read_at ? 0 : 1
+                        });
+                    }
+                });
+                setThreads(Array.from(uniqueSenders.values()));
+            }
 
-    const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    };
-
-    useEffect(() => {
-        scrollToBottom();
-    }, [messages]);
-
-    const handleSendReply = async () => {
-        if (!replyText.trim() || !selectedConvId || !user) return;
-
-        try {
-            const { error } = await supabase.from('messages').insert({
-                sender_id: user.id,
-                receiver_id: selectedConvId,
-                content: replyText,
-                read: false
-            });
-
-            if (error) throw error;
-            setReplyText('');
         } catch (err) {
             console.error(err);
-            addToast("Erro ao enviar mensagem", "error");
+        } finally {
+            setLoading(false);
         }
     };
 
-    const selectedConv = conversations.find(c => c.id === selectedConvId);
+    const fetchMessages = async (partnerId: string) => {
+        const { data } = await supabase
+            .from('messages')
+            .select('*')
+            .or(`and(sender_id.eq.${user!.id},receiver_id.eq.${partnerId}),and(sender_id.eq.${partnerId},receiver_id.eq.${user!.id})`)
+            .order('created_at', { ascending: true });
+
+        if (data) setMessages(data);
+    };
+
+    const handleSendMessage = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newMessage.trim() || !activeThread) return;
+
+        const optimisticMsg: Message = {
+            id: 'temp-' + Date.now(),
+            sender_id: user!.id,
+            receiver_id: activeThread.partnerId,
+            content: newMessage,
+            created_at: new Date().toISOString(),
+            read_at: null
+        };
+
+        setMessages(prev => [...prev, optimisticMsg]);
+        setNewMessage('');
+
+        const { error } = await supabase.from('messages').insert({
+            sender_id: user!.id,
+            receiver_id: activeThread.partnerId,
+            content: optimisticMsg.content
+        });
+
+        if (error) {
+            console.error('Error sending:', error);
+            // Revert optimistic update ideally
+        }
+    };
 
     return (
-        <div className="flex flex-1 min-h-[600px] border border-gray-200 rounded-lg overflow-hidden bg-white">
-            {/* Conversation List */}
-            <div className="w-1/3 border-r border-gray-200 flex flex-col">
-                <div className="p-4 border-b shrink-0 bg-gray-50">
-                    <h3 className="text-lg font-medium text-gray-900">Mensagens</h3>
+        <div className="h-[calc(100vh-100px)] flex bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
+            {/* Sidebar List */}
+            <div className="w-1/3 border-r border-gray-100 flex flex-col">
+                <div className="p-4 border-b border-gray-100 bg-gray-50">
+                    <h2 className="text-lg font-bold text-gray-800">Mensagens</h2>
                 </div>
-                <ul className="overflow-y-auto flex-1 h-full">
-                    {loading && <li className="p-4 text-center text-gray-500">Carregando...</li>}
-                    {!loading && conversations.length === 0 && (
-                        <li className="p-4 text-center text-gray-500 text-sm">Nenhuma conversa iniciada.</li>
-                    )}
-                    {conversations.map(conv => (
-                        <li key={conv.id}
-                            onClick={() => setSelectedConvId(conv.id)}
-                            className={`flex items-center p-3 cursor-pointer border-b transition-colors ${selectedConvId === conv.id ? 'bg-primary-50 border-l-4 border-l-primary-500' : 'hover:bg-gray-50 border-l-4 border-l-transparent'}`}
-                        >
-                            <img src={conv.avatar} alt={conv.name} className="w-10 h-10 rounded-full mr-3" />
-                            <div className="flex-1 overflow-hidden">
-                                <div className="flex justify-between items-center">
-                                    <span className="font-semibold text-gray-800 truncate">{conv.name}</span>
-                                    {conv.unreadCount > 0 && <span className="flex items-center justify-center w-5 h-5 bg-primary-500 text-white text-xs rounded-full shrink-0 ml-2">{conv.unreadCount}</span>}
+                <div className="flex-grow overflow-y-auto">
+                    {loading ? (
+                        <div className="p-4 space-y-4">
+                            <LoadingSkeleton className="h-16 w-full rounded-lg" />
+                            <LoadingSkeleton className="h-16 w-full rounded-lg" />
+                            <LoadingSkeleton className="h-16 w-full rounded-lg" />
+                        </div>
+                    ) : threads.length === 0 ? (
+                        <div className="p-8 text-center text-gray-500 text-sm">
+                            Nenhuma conversa iniciada.
+                        </div>
+                    ) : (
+                        threads.map(thread => (
+                            <button
+                                key={thread.partnerId}
+                                onClick={() => setActiveThread(thread)}
+                                className={`w-full p-4 flex items-start gap-3 hover:bg-gray-50 transition-colors text-left ${activeThread?.partnerId === thread.partnerId ? 'bg-blue-50 border-r-4 border-brand-primary' : ''}`}
+                            >
+                                <div className="w-10 h-10 bg-gray-200 rounded-full flex-shrink-0 flex items-center justify-center text-gray-500 font-bold overflow-hidden">
+                                    {thread.partnerAvatar ? (
+                                        <img src={thread.partnerAvatar} alt="" className="w-full h-full object-cover" />
+                                    ) : (
+                                        thread.partnerName.charAt(0)
+                                    )}
                                 </div>
-                                <p className="text-sm text-gray-500 truncate">{conv.lastMessage}</p>
-                            </div>
-                        </li>
-                    ))}
-                </ul>
+                                <div className="flex-grow min-w-0">
+                                    <div className="flex justify-between items-baseline mb-1">
+                                        <span className="font-semibold text-gray-900 truncate">{thread.partnerName}</span>
+                                        <span className="text-xs text-gray-400 flex-shrink-0">
+                                            {new Date(thread.lastMessageTime).toLocaleDateString([], { hour: '2-digit', minute: '2-digit' })}
+                                        </span>
+                                    </div>
+                                    <p className="text-sm text-gray-500 truncate">{thread.lastMessage}</p>
+                                </div>
+                            </button>
+                        ))
+                    )}
+                </div>
             </div>
 
             {/* Chat Area */}
-            <div className="w-2/3 flex flex-col bg-gray-50">
-                {selectedConvId ? (
+            <div className="w-2/3 flex flex-col bg-slate-50">
+                {activeThread ? (
                     <>
-                        <div className="p-4 border-b bg-white flex items-center shrink-0 shadow-sm">
-                            <img src={selectedConv?.avatar} alt={selectedConv?.name} className="w-10 h-10 rounded-full mr-3" />
-                            <div>
-                                <h3 className="font-semibold text-gray-900">{selectedConv?.name || 'Chat'}</h3>
+                        <div className="p-4 bg-white border-b border-gray-100 flex items-center justify-between shadow-sm z-10">
+                            <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 bg-brand-primary rounded-full flex items-center justify-center text-white font-bold">
+                                    {activeThread.partnerName.charAt(0)}
+                                </div>
+                                <span className="font-bold text-gray-800">{activeThread.partnerName}</span>
                             </div>
                         </div>
-                        <div className="flex-1 p-6 overflow-y-auto space-y-4">
-                            {messages.map((msg) => (
-                                <div key={msg.id} className={`flex ${msg.sender_id === user?.id ? 'justify-end' : 'justify-start'}`}>
-                                    <div className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${msg.sender_id === user?.id ? 'bg-primary-500 text-white' : 'bg-white text-gray-800 shadow-sm'}`}>
-                                        <p>{msg.content}</p>
-                                        <span className={`text-[10px] block mt-1 ${msg.sender_id === user?.id ? 'text-primary-100' : 'text-gray-400'}`}>
-                                            {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                        </span>
+
+                        <div className="flex-grow overflow-y-auto p-4 space-y-4">
+                            {messages.map((msg) => {
+                                const isMe = msg.sender_id === user?.id;
+                                return (
+                                    <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
+                                        <div
+                                            className={`max-w-[70%] px-4 py-2 rounded-2xl shadow-sm text-sm ${isMe
+                                                ? 'bg-brand-primary text-white rounded-br-none'
+                                                : 'bg-white text-gray-800 border border-gray-100 rounded-bl-none'
+                                                }`}
+                                        >
+                                            {msg.content}
+                                            <div className={`text-[10px] mt-1 text-right ${isMe ? 'text-blue-100' : 'text-gray-400'}`}>
+                                                {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            </div>
+                                        </div>
                                     </div>
-                                </div>
-                            ))}
-                            <div ref={messagesEndRef} />
+                                );
+                            })}
                         </div>
-                        <div className="p-4 border-t bg-white shrink-0">
-                            <div className="flex space-x-3">
+
+                        <div className="p-4 bg-white border-t border-gray-100">
+                            <form onSubmit={handleSendMessage} className="flex gap-2">
                                 <input
                                     type="text"
-                                    value={replyText}
-                                    onChange={(e) => setReplyText(e.target.value)}
-                                    onKeyPress={(e) => e.key === 'Enter' && handleSendReply()}
-                                    placeholder="Digite sua resposta..."
-                                    className="w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500"
+                                    value={newMessage}
+                                    onChange={(e) => setNewMessage(e.target.value)}
+                                    placeholder="Digite sua mensagem..."
+                                    className="flex-grow p-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all"
                                 />
-                                <Button onClick={handleSendReply}>Enviar</Button>
-                            </div>
+                                <Button variant="primary" type="submit" disabled={!newMessage.trim()}>
+                                    Enviar
+                                </Button>
+                            </form>
                         </div>
                     </>
                 ) : (
-                    <div className="flex-1 p-6 flex flex-col items-center justify-center text-center">
-                        <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mb-4">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                            </svg>
-                        </div>
-                        <h3 className="mt-2 text-lg font-medium text-gray-900">Suas conversas</h3>
-                        <p className="mt-1 text-sm text-gray-500">Selecione uma conversa para ver os detalhes.</p>
+                    <div className="flex-grow flex flex-col items-center justify-center text-gray-400">
+                        <svg className="w-16 h-16 mb-4 opacity-20" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M18 5v8a2 2 0 01-2 2h-5l-5 4v-4H4a2 2 0 01-2-2V5a2 2 0 012-2h12a2 2 0 012 2zM7 8H5v2h2V8zm2 0h2v2H9V8zm6 0h-2v2h2V8z" clipRule="evenodd" />
+                        </svg>
+                        <p>Selecione uma conversa para começar</p>
                     </div>
                 )}
             </div>

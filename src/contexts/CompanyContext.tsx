@@ -98,7 +98,7 @@ export const CompanyProvider: React.FC<{ children: ReactNode }> = ({ children })
         if (!company) return;
 
         try {
-            const updatePayload: any = { ...data };
+            const updatePayload: Partial<CompanyData> = { ...data };
 
             // If we are updating address, we need to construct the JSON object
             // For now, we only update specific top-level fields passed in `data`

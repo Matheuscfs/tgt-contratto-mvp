@@ -101,7 +101,15 @@ const DashboardAgendamentosPage: React.FC = () => {
             if (error) throw error;
 
             setBookings(prev => prev.map(b => b.id === id ? { ...b, status: newStatus as Booking['status'] } : b));
-            addToast(`Agendamento ${newStatus === 'confirmed' ? 'confirmado' : 'atualizado'}!`, 'success');
+
+            // Show nicer toast messages based on action
+            if (newStatus === 'confirmed') {
+                addToast('Agendamento aceito com sucesso! Entre em contato com o cliente.', 'success');
+            } else if (newStatus === 'cancelled') {
+                addToast('Agendamento recusado.', 'info');
+            } else if (newStatus === 'completed') {
+                addToast('Serviço marcado como concluído!', 'success');
+            }
         } catch (err) {
             console.error(err);
             addToast("Erro ao atualizar status.", "error");

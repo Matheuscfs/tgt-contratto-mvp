@@ -134,9 +134,9 @@ const CompaniesListPage: React.FC = () => {
       return true;
     })
     .sort((a, b) => {
+      // Priority for featured/promoted (mock logic: if rating > 4.8)
+      // Implementation of sorting logic
       if (sortBy === 'distance') {
-        // Sort by distance (ascending)
-        // Items without distance go to bottom
         if (a.distance !== undefined && b.distance !== undefined) return a.distance - b.distance;
         if (a.distance !== undefined) return -1;
         if (b.distance !== undefined) return 1;
@@ -294,32 +294,45 @@ const CompaniesListPage: React.FC = () => {
               ))}
             </div>
           ) : (
-            <div className="text-center py-16 px-4 bg-white rounded-lg shadow-md">
-              <svg className="mx-auto h-16 w-16 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-              <h3 className="mt-4 text-xl font-semibold text-gray-800">Nenhum resultado encontrado</h3>
-              <p className="text-gray-500 mt-2 mb-6">Tente ajustar seus filtros de busca ou procurar por outro termo.</p>
 
-              <div className="mt-6">
-                <p className="text-sm font-medium text-gray-700 mb-3">Categorias Populares:</p>
-                <div className="flex flex-wrap gap-2 justify-center">
-                  {CATEGORIES.slice(0, 5).map(cat => (
+            <div className="text-center py-24 px-4 bg-white rounded-2xl shadow-sm border border-gray-100">
+              <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                <svg className="h-10 w-10 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-2">Nenhum resultado encontrado</h3>
+              <p className="text-gray-500 max-w-md mx-auto mb-8">
+                Não encontramos empresas correspondentes à sua busca por "{searchTerm}" {locationTerm && `em "${locationTerm}"`}.
+                Tente termos mais genéricos ou verifique a ortografia.
+              </p>
+
+              <div className="bg-gray-50 p-6 rounded-xl max-w-2xl mx-auto">
+                <p className="text-sm font-semibold text-gray-900 mb-4 uppercase tracking-wide">Categorias Populares</p>
+                <div className="flex flex-wrap gap-3 justify-center">
+                  {CATEGORIES.slice(0, 8).map(cat => (
                     <button
                       key={cat}
                       onClick={() => { setSelectedCategory(cat); setSearchTerm(''); }}
-                      className="px-4 py-3 bg-gray-100 hover:bg-brand-primary hover:text-white rounded-md text-sm transition-colors min-h-[44px] flex items-center justify-center"
+                      className="px-4 py-2 bg-white border border-gray-200 hover:border-brand-primary hover:text-brand-primary rounded-full text-sm font-medium transition-all shadow-sm hover:shadow-md"
                     >
                       {cat}
                     </button>
                   ))}
+                  <button
+                    onClick={() => { setSelectedCategory('all'); setSearchTerm(''); setLocationTerm(''); }}
+                    className="px-4 py-2 bg-brand-primary text-white rounded-full text-sm font-medium hover:bg-brand-secondary transition-colors shadow-md"
+                  >
+                    Ver Tudo
+                  </button>
                 </div>
               </div>
             </div>
-          )}
-        </div>
-      </div>
-    </div>
+          )
+          }
+        </div >
+      </div >
+    </div >
   );
 };
 

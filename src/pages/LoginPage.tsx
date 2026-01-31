@@ -77,9 +77,10 @@ const LoginPage: React.FC = () => {
           navigate('/');
         }
       }
-    } catch (err: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
-      console.error('Login error:', err);
-      addToast(err.message || 'Falha ao realizar login. Verifique suas credenciais.', 'error');
+    } catch (err: unknown) {
+      const error = err as Error;
+      console.error('Login error:', error);
+      addToast(error.message || 'Falha ao realizar login. Verifique suas credenciais.', 'error');
     } finally {
       setIsLoading(false);
     }

@@ -174,7 +174,36 @@ const CompanyProfilePage: React.FC = () => {
     setIsBookingModalOpen(true);
   };
 
-  // Handler functions removed as logic is now inside Modals
+  // Handler functions
+  const [submittingReview, setSubmittingReview] = useState(false);
+
+  const handleReviewSubmit = async (rating: number, comment: string) => {
+    if (!user || user.type !== 'client') {
+      alert("Você precisa estar logado como cliente para avaliar.");
+      return;
+    }
+    setSubmittingReview(true);
+    try {
+      const { error } = await supabase.from('reviews').insert({
+        company_id: company?.id,
+        client_id: user.id,
+        rating,
+        comment
+      });
+
+      if (error) throw error;
+
+      alert("Avaliação enviada com sucesso!");
+      setIsReviewModalOpen(false);
+      // Ideally refresh reviews here
+      window.location.reload();
+    } catch (err) {
+      console.error("Error submitting review:", err);
+      alert("Erro ao enviar avaliação. Tente novamente.");
+    } finally {
+      setSubmittingReview(false);
+    }
+  };
 
   return (
     <div className="bg-white">
@@ -320,6 +349,65 @@ const CompanyProfilePage: React.FC = () => {
               )}
             </section>
 
+            {/* Reviews Section */}
+            <section id="avaliacoes">
+              <div className="flex items-center justify-between border-b pb-2 mb-6">
+                <h2 className="text-2xl font-bold text-gray-900">Avaliações</h2>
+                <div className="flex items-center gap-2">
+                  <span className="text-3xl font-bold text-gray-900">{company.rating.toFixed(1)}</span>
+                  <div className="flex flex-col">
+                    <div className="flex text-yellow-400 text-sm">
+                      {[...Array(5)].map((_, i) => (
+                        <svg key={i} className={`w-4 h-4 ${i < Math.round(company.rating) ? 'fill-current' : 'text-gray-200'}`} viewBox="0 0 20 20" fill="currentColor">
+                          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                        </svg>
+                      ))}
+                    </div>
+                    <span className="text-xs text-gray-500">{company.reviewCount} avaliações</span>
+                  </div>
+                </div>
+              </div>
+
+              {company.reviews.length > 0 ? (
+                <div className="space-y-6">
+                  {company.reviews.map((review) => (
+                    <div key={review.id} className="bg-gray-50 rounded-xl p-6">
+                      <div className="flex items-start gap-4">
+                        <img
+                          src={review.avatar || 'https://via.placeholder.com/40'}
+                          alt={review.author}
+                          className="w-10 h-10 rounded-full object-cover"
+                        />
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="font-bold text-gray-900">{review.author}</h4>
+                            <span className="text-sm text-gray-500">{review.date}</span>
+                          </div>
+                          <div className="flex text-yellow-400 mb-2">
+                            {[...Array(5)].map((_, i) => (
+                              <svg key={i} className={`w-4 h-4 ${i < review.rating ? 'fill-current' : 'text-gray-300'}`} viewBox="0 0 20 20" fill="currentColor">
+                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                              </svg>
+                            ))}
+                          </div>
+                          <p className="text-gray-700 text-sm leading-relaxed">{review.comment}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 bg-gray-50 rounded-xl border border-dashed border-gray-300">
+                  <p className="text-gray-500 mb-4">Esta empresa ainda não possui avaliações.</p>
+                  {user && user.type === 'client' && (
+                    <Button variant="outline" size="sm" onClick={() => setIsReviewModalOpen(true)}>
+                      Seja o primeiro a avaliar
+                    </Button>
+                  )}
+                </div>
+              )}
+            </section>
+
             {/* FAQ Section for GEO */}
             <FAQSection
               companyName={company.companyName}
@@ -357,18 +445,30 @@ const CompanyProfilePage: React.FC = () => {
                   {company.website && <li className="flex items-center"><strong className="w-20 font-medium">Website:</strong> <a href={`http://${company.website}`} target="_blank" rel="noopener noreferrer" className="text-primary-600 hover:underline">{company.website}</a></li>}
                 </ul>
                 <div className="mt-6 flex flex-col space-y-3">
-                  <Button className="w-full min-h-[48px]" onClick={() => setIsMessageModalOpen(true)}>
+                  <Button className="w-full min-h-[48px]" onClick={() => setIsBookingModalOpen(true)}>
                     Solicitar Orçamento Grátis
                   </Button>
+                  <Button className="w-full min-h-[48px]" variant="outline" onClick={() => setIsMessageModalOpen(true)}>
+                    Enviar Mensagem
+                  </Button>
                   {user && user.type === 'client' && (
-                    <Button
-                      className="w-full min-h-[48px]"
-                      variant={favorited ? 'danger' : 'secondary'}
-                      onClick={handleToggleFavorite}
-                    >
-                      <HeartIcon />
-                      {favorited ? 'Remover dos Favoritos' : 'Adicionar aos Favoritos'}
-                    </Button>
+                    <>
+                      <Button
+                        className="w-full min-h-[48px]"
+                        variant={favorited ? 'danger' : 'secondary'}
+                        onClick={handleToggleFavorite}
+                      >
+                        <HeartIcon />
+                        {favorited ? 'Remover dos Favoritos' : 'Adicionar aos Favoritos'}
+                      </Button>
+                      <Button
+                        className="w-full min-h-[48px]"
+                        variant="secondary"
+                        onClick={() => setIsReviewModalOpen(true)}
+                      >
+                        Avaliar Empresa
+                      </Button>
+                    </>
                   )}
                 </div>
               </div>
@@ -378,38 +478,32 @@ const CompanyProfilePage: React.FC = () => {
                 <div className="aspect-w-16 aspect-h-9 bg-gray-200 flex items-center justify-center rounded-md">
                   <p className="text-gray-500">Mapa indisponível temporariamente.</p>
                 </div>
-                {/* <MapEmbed lat={company.address.lat} lng={company.address.lng} address={`${company.address.street}, ${company.address.city}`} /> */}
               </div>
             </div>
           </aside>
         </div>
       </div>
 
-      {company && (
-        <>
-          <MessageModal
-            isOpen={isMessageModalOpen}
-            onClose={() => setIsMessageModalOpen(false)}
-            companyId={company.id}
-            companyName={company.companyName}
-          />
+      <MessageModal
+        isOpen={isMessageModalOpen}
+        onClose={() => setIsMessageModalOpen(false)}
+        companyId={company.id}
+        companyName={company.companyName}
+      />
 
-          <ServiceBookingModal
-            isOpen={isBookingModalOpen}
-            onClose={() => setIsBookingModalOpen(false)}
-            service={selectedService}
-            companyName={company.companyName}
-          />
+      <ServiceBookingModal
+        isOpen={isBookingModalOpen}
+        onClose={() => setIsBookingModalOpen(false)}
+        service={selectedService}
+        companyName={company.companyName}
+      />
 
-          <ReviewModal
-            isOpen={isReviewModalOpen}
-            onClose={() => setIsReviewModalOpen(false)}
-            companyId={company.id}
-            companyName={company.companyName}
-            onSuccess={() => window.location.reload()}
-          />
-        </>
-      )}
+      <ReviewModal
+        isOpen={isReviewModalOpen}
+        onClose={() => setIsReviewModalOpen(false)}
+        onSubmit={handleReviewSubmit}
+        isLoading={submittingReview}
+      />
     </div>
   );
 };

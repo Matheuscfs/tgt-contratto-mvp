@@ -43,7 +43,8 @@ const ResetPasswordPage: React.FC = () => {
 
             addToast('Senha redefinida com sucesso!', 'success');
             navigate('/auth/login');
-        } catch (error: any) {
+        } catch (err: unknown) {
+            const error = err as Error;
             console.error('Error resetting password:', error);
             addToast(error.message || 'Erro ao redefinir senha.', 'error');
         } finally {
