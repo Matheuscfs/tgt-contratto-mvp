@@ -1,63 +1,63 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://tgt-guia-de-negocios.vercel.app/</loc>
+    <loc>https://www.contrattoex.com/</loc>
     <lastmod>2026-01-24</lastmod>
     <changefreq>daily</changefreq>
     <priority>1</priority>
   </url>
   <url>
-    <loc>https://tgt-guia-de-negocios.vercel.app/empresas</loc>
+    <loc>https://www.contrattoex.com/empresas</loc>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://tgt-guia-de-negocios.vercel.app/para-empresas</loc>
+    <loc>https://www.contrattoex.com/para-empresas</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://tgt-guia-de-negocios.vercel.app/sobre</loc>
+    <loc>https://www.contrattoex.com/sobre</loc>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://tgt-guia-de-negocios.vercel.app/contato</loc>
+    <loc>https://www.contrattoex.com/contato</loc>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://tgt-guia-de-negocios.vercel.app/ajuda</loc>
+    <loc>https://www.contrattoex.com/ajuda</loc>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://tgt-guia-de-negocios.vercel.app/privacidade</loc>
+    <loc>https://www.contrattoex.com/privacidade</loc>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
   </url>
   <url>
-    <loc>https://tgt-guia-de-negocios.vercel.app/termos</loc>
+    <loc>https://www.contrattoex.com/termos</loc>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
   </url>
   <url>
-    <loc>https://tgt-guia-de-negocios.vercel.app/auth/login</loc>
+    <loc>https://www.contrattoex.com/auth/login</loc>
     <changefreq>monthly</changefreq>
     <priority>0.4</priority>
   </url>
   <url>
-    <loc>https://tgt-guia-de-negocios.vercel.app/auth/register</loc>
+    <loc>https://www.contrattoex.com/auth/register</loc>
     <changefreq>monthly</changefreq>
     <priority>0.4</priority>
   </url>
   <url>
-    <loc>https://tgt-guia-de-negocios.vercel.app/empresa/cadastro</loc>
+    <loc>https://www.contrattoex.com/empresa/cadastro</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://tgt-guia-de-negocios.vercel.app/empresa/empresa-teste</loc>
+    <loc>https://www.contrattoex.com/empresa/empresa-teste</loc>
     <lastmod>2026-01-24</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
