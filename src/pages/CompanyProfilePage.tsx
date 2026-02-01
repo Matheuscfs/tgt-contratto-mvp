@@ -7,6 +7,7 @@ import ServiceCard from '../components/ServiceCard';
 import Button from '../components/ui/Button';
 import { useAuth } from '../contexts/AuthContext';
 import { useFavorites } from '../contexts/FavoritesContext';
+import { useToast } from '../contexts/ToastContext';
 import MessageModal from '../components/MessageModal';
 import ServiceBookingModal from '../components/ServiceBookingModal';
 import ReviewModal from '../components/ReviewModal';
@@ -25,10 +26,14 @@ const HeartIcon: React.FC = () => (
   </svg>
 );
 
+import LoadingSkeleton from '../components/ui/LoadingSkeleton';
+import OptimizedImage from '../components/ui/OptimizedImage';
+
 const CompanyProfilePage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
   const { user } = useAuth();
   const { addFavorite, removeFavorite, isFavorite } = useFavorites();
+  const { addToast } = useToast();
   const { data: company, isLoading: loading, error: queryError } = useCompanyProfile(slug);
   const { data: similarCompanies = [] } = useSimilarCompanies(company?.category, company?.id);
 
@@ -43,7 +48,41 @@ const CompanyProfilePage: React.FC = () => {
   const error = queryError ? (queryError as Error).message : null;
 
 
-  if (loading) return <div className="text-center py-20">Carregando perfil...</div>;
+  if (loading) {
+    return (
+      <div className="bg-white min-h-screen">
+        {/* Cover Skeleton */}
+        <div className="h-64 md:h-80 bg-gray-200 animate-pulse relative">
+          <div className="absolute bottom-0 left-0 right-0 p-8 container mx-auto flex items-center gap-6">
+            <div className="w-32 h-32 rounded-full bg-gray-300 border-4 border-white"></div>
+            <div className="flex-1 space-y-3">
+              <LoadingSkeleton className="h-8 w-1/3 bg-gray-300/50" />
+              <LoadingSkeleton className="h-5 w-1/4 bg-gray-300/50" />
+            </div>
+          </div>
+        </div>
+
+        <div className="container mx-auto px-6 py-12 grid grid-cols-1 lg:grid-cols-3 gap-12">
+          <div className="lg:col-span-2 space-y-12">
+            <div className="space-y-4">
+              <LoadingSkeleton className="h-8 w-40" />
+              <LoadingSkeleton className="h-4 w-full" count={3} />
+            </div>
+            <div className="space-y-4">
+              <LoadingSkeleton className="h-8 w-40" />
+              <div className="grid grid-cols-2 gap-6">
+                <LoadingSkeleton className="h-40 rounded-xl" />
+                <LoadingSkeleton className="h-40 rounded-xl" />
+              </div>
+            </div>
+          </div>
+          <div className="lg:col-span-1">
+            <LoadingSkeleton className="h-64 rounded-xl" />
+          </div>
+        </div>
+      </div>
+    );
+  }
   if (!company || error) return <div className="text-center py-20">{error || "Empresa não encontrada."}</div>;
 
   const favorited = isFavorite(company.id);
@@ -62,32 +101,81 @@ const CompanyProfilePage: React.FC = () => {
   };
 
   // Handler functions
-  // Handler functions
 
   const handleReviewSubmit = async (rating: number, comment: string) => {
+    // 🔐 SECURITY: Validate user authentication and type
     if (!user || user.type !== 'client') {
-      alert("Você precisa estar logado como cliente para avaliar.");
+      addToast("Você precisa estar logado como cliente para avaliar.", 'error');
+      setIsReviewModalOpen(false);
       return;
     }
+
+    // 🔐 CRITICAL: Ensure user.id is defined (RLS requirement)
+    if (!user.id) {
+      console.error("❌ RLS ERROR: user.id is undefined or null");
+      addToast("Erro de autenticação. Por favor, faça login novamente.", 'error');
+      setIsReviewModalOpen(false);
+      return;
+    }
+
+    // 🔐 CRITICAL: Ensure company.id is defined
+    if (!company?.id) {
+      console.error("❌ RLS ERROR: company.id is undefined or null");
+      addToast("Erro ao identificar a empresa. Recarregue a página.", 'error');
+      setIsReviewModalOpen(false);
+      return;
+    }
+
     setSubmittingReview(true);
+
     try {
-      const { error } = await supabase.from('reviews').insert({
-        company_id: company?.id,
+      // 🐛 DEBUG: Log payload before sending
+      const payload = {
+        company_id: company.id,
         client_id: user.id,
         rating,
         comment
-      });
+      };
+      console.log("📤 Sending review payload:", payload);
 
-      if (error) throw error;
+      const { data, error } = await supabase
+        .from('reviews')
+        .insert(payload)
+        .select();
 
-      alert("Avaliação enviada com sucesso!");
+      if (error) {
+        // 🔐 SECURITY: Handle RLS error specifically
+        if (error.code === '42501') {
+          console.error("❌ RLS POLICY VIOLATION (42501):", error);
+          addToast(
+            "Erro de permissão: Você não tem autorização para criar esta avaliação. Verifique se está logado corretamente.",
+            'error'
+          );
+        } else if (error.code === '23505') {
+          // Duplicate key violation
+          addToast("Você já avaliou esta empresa.", 'error');
+        } else {
+          console.error("❌ Database error:", error);
+          addToast(`Erro ao enviar avaliação: ${error.message}`, 'error');
+        }
+        throw error;
+      }
+
+      console.log("✅ Review created successfully:", data);
+      addToast("Avaliação enviada com sucesso!", 'success');
       setIsReviewModalOpen(false);
-      // Ideally refresh reviews here
-      window.location.reload();
+
+      // Refresh the page to show new review
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+
     } catch (err) {
-      console.error("Error submitting review:", err);
-      alert("Erro ao enviar avaliação. Tente novamente.");
+      console.error("❌ Unexpected error submitting review:", err);
+      // Error already handled above with toast, just ensure modal stays open for retry
+      // Don't close modal on error so user can try again
     } finally {
+      // CRITICAL: Always reset loading state to prevent UI freeze
       setSubmittingReview(false);
     }
   };
@@ -162,7 +250,7 @@ const CompanyProfilePage: React.FC = () => {
         )}
       </Helmet>
 
-      {/* Cover Image and Header */}
+      {/* Cover Image and Header Skeleton or Content */}
       <div className={`relative h-64 md:h-80 bg-gray-200 ${heroImageError ? 'bg-gradient-to-r from-brand-primary to-brand-secondary' : ''}`}>
         {!heroImageError && (
           <img
@@ -224,12 +312,16 @@ const CompanyProfilePage: React.FC = () => {
             <section id="portfolio">
               <h2 className="text-2xl font-bold text-gray-900 border-b pb-2 mb-4">Portfólio</h2>
               {company.portfolio.length === 0 ? (
-                <p className="text-gray-500">Em breve...</p>
+                <p className="text-gray-500">Nenhum item no portfólio.</p>
               ) : (
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  {company.portfolio.map((img, idx) => (
-                    <div key={idx} className="aspect-square rounded-lg overflow-hidden bg-gray-100">
-                      <img src={img} alt={`Portfolio ${idx}`} className="w-full h-full object-cover hover:scale-105 transition-transform duration-300" />
+                  {company.portfolio.map((item, idx) => (
+                    <div key={item.id || idx} className="aspect-square rounded-lg overflow-hidden bg-gray-100">
+                      <img
+                        src={item.url}
+                        alt={item.caption || `Portfolio ${idx}`}
+                        className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                      />
                     </div>
                   ))}
                 </div>
@@ -260,10 +352,11 @@ const CompanyProfilePage: React.FC = () => {
                   {company.reviews.map((review) => (
                     <div key={review.id} className="bg-gray-50 rounded-xl p-6">
                       <div className="flex items-start gap-4">
-                        <img
-                          src={review.avatar || 'https://via.placeholder.com/40'}
+                        <OptimizedImage
+                          src={review.avatar || ''}
                           alt={review.author}
                           className="w-10 h-10 rounded-full object-cover"
+                          fallbackSrc={`https://ui-avatars.com/api/?name=${review.author}&background=random`}
                         />
                         <div className="flex-1">
                           <div className="flex items-center justify-between mb-2">

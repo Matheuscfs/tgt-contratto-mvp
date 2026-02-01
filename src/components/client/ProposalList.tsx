@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import Button from '../ui/Button';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
+import OptimizedImage from '../ui/OptimizedImage';
 
 interface Proposal {
     id: string;
@@ -26,7 +27,7 @@ interface ProposalListProps {
 const ProposalList: React.FC<ProposalListProps> = ({ proposals, onProposalAccepted }) => {
     const { user } = useAuth();
     const { showToast } = useToast();
-    const [processing, setProcessing] = React.useState<string | null>(null);
+    const [processing, setProcessing] = useState<string | null>(null);
 
     const handleAccept = async (proposal: Proposal) => {
         if (!user) return;
@@ -102,9 +103,12 @@ const ProposalList: React.FC<ProposalListProps> = ({ proposals, onProposalAccept
                 <div key={proposal.id} className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
                     <div className="flex justify-between items-start mb-2">
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center text-gray-500 font-bold">
-                                {proposal.company?.name?.charAt(0) || '?'}
-                            </div>
+                            <OptimizedImage
+                                src={proposal.company?.avatar_url || ''}
+                                alt={proposal.company?.name || 'Empresa'}
+                                className="w-10 h-10 rounded-full object-cover border border-gray-200"
+                                fallbackSrc={`https://ui-avatars.com/api/?name=${proposal.company?.name || 'E'}&background=random`}
+                            />
                             <div>
                                 <p className="font-bold text-gray-900">{proposal.company?.name || 'Empresa'}</p>
                                 <p className="text-xs text-gray-500">{new Date(proposal.created_at).toLocaleDateString()}</p>

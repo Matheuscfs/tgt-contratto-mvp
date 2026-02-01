@@ -8,6 +8,7 @@ import { useToast } from '../../contexts/ToastContext';
 import Badge from '../../components/ui/Badge';
 import { Link, useLocation } from 'react-router-dom';
 import { useClientProfileData } from '../../hooks/useClientProfileData';
+import OptimizedImage from '../../components/ui/OptimizedImage';
 
 // Icons need to be redefined or imported if they were local
 const UserIcon = () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>;
@@ -87,10 +88,11 @@ const ClientProfilePage: React.FC = () => {
       <div className="bg-brand-primary h-48 w-full relative">
         <div className="absolute -bottom-16 left-0 right-0 container mx-auto px-4 flex items-end">
           <div className="flex items-center gap-6">
-            <img
-              src={user.avatar || `https://ui-avatars.com/api/?name=${user.name}&background=random`}
+            <OptimizedImage
+              src={user.avatar || ''}
               alt="Avatar"
               className="w-32 h-32 rounded-full border-4 border-white shadow-lg bg-white"
+              fallbackSrc={`https://ui-avatars.com/api/?name=${user.name}&background=random`}
             />
             <div className="mb-4">
               <h1 className="text-3xl font-bold text-white">{user.name}</h1>
@@ -264,10 +266,11 @@ const ClientProfilePage: React.FC = () => {
                   {favorites.map((fav) => (
                     <div key={fav.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 hover:shadow-md transition-shadow">
                       <div className="flex items-start gap-4">
-                        <img
-                          src={fav.company?.logo_url || 'https://via.placeholder.com/64'}
+                        <OptimizedImage
+                          src={fav.company?.logo_url || ''}
                           alt={fav.company?.name}
                           className="w-16 h-16 rounded-lg object-cover bg-gray-100"
+                          fallbackSrc={`https://ui-avatars.com/api/?name=${fav.company?.name}&background=random`}
                         />
                         <div className="flex-1">
                           <h4 className="font-bold text-gray-900 line-clamp-1">{fav.company?.name}</h4>
