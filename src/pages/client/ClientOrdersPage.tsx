@@ -1,131 +1,29 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Button from '../../components/ui/Button';
-import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { Booking } from '../../types';
+import { BookingWithCompany } from '../../types';
 import ProposalList from '../../components/client/ProposalList';
 import { useNavigate } from 'react-router-dom';
-
-// Extended type for UI
-interface BookingWithCompany extends Booking {
-    companyName: string;
-    serviceName: string;
-    price: number;
-    date: string;
-    time: string;
-}
-
-interface Proposal {
-    id: string;
-    company_id: string;
-    price: number;
-    cover_letter: string;
-    status: 'pending' | 'accepted' | 'rejected';
-    created_at: string;
-    company: {
-        name: string;
-        avatar_url?: string;
-    }
-}
-
-interface JobRequest {
-    id: string;
-    title: string;
-    description: string;
-    status: 'open' | 'in_progress' | 'completed' | 'cancelled';
-    created_at: string;
-    budget_min?: number;
-    budget_max?: number;
-    proposals: Proposal[];
-    category?: { name: string };
-}
+import { useClientOrders } from '../../hooks/useClientOrders';
 
 const ClientOrdersPage: React.FC = () => {
     const { user } = useAuth();
     const navigate = useNavigate();
 
-    // State
-    const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState<'requests' | 'active' | 'history'>('requests');
-
     // Data
-    const [jobs, setJobs] = useState<JobRequest[]>([]);
-    const [bookings, setBookings] = useState<BookingWithCompany[]>([]);
+    const { data: ordersData, isLoading: loading } = useClientOrders(user?.id);
+    const jobs = ordersData?.jobs || [];
+    const bookings = ordersData?.bookings || [];
+
+    // State
+    const [activeTab, setActiveTab] = useState<'requests' | 'active' | 'history'>('requests');
     const [expandedJobId, setExpandedJobId] = useState<string | null>(null);
 
-    const fetchJobs = React.useCallback(async () => {
-        if (!user) return;
-        const { data, error } = await supabase
-            .from('jobs')
-            .select(`
-                *,
-                category:categories(name),
-                proposals (
-                    *,
-                    company:companies(name, avatar_url)
-                )
-            `)
-            .eq('user_id', user.id)
-            .order('created_at', { ascending: false });
-
-        if (error) console.error('Error fetching jobs:', error);
-        if (data) setJobs(data as unknown as JobRequest[]);
-    }, [user]);
-
-    const fetchBookings = React.useCallback(async () => {
-        if (!user) return;
-        const { data: bookingsData, error } = await supabase
-            .from('bookings')
-            .select('*')
-            .eq('client_id', user.id)
-            .order('created_at', { ascending: false });
-
-        if (error) throw error;
-
-        if (bookingsData && bookingsData.length > 0) {
-            const companyIds = [...new Set(bookingsData.map(b => b.company_id))];
-            const { data: companiesData } = await supabase
-                .from('companies')
-                .select('id, name')
-                .in('id', companyIds);
-
-            const companiesMap = new Map(companiesData?.map(c => [c.id, c.name]));
-
-            const mappedOrders = bookingsData.map(b => ({
-                ...b,
-                companyName: companiesMap.get(b.company_id) || 'Empresa Desconhecida',
-                serviceName: b.service_title,
-                price: b.service_price || 0,
-                date: b.booking_date,
-                time: b.booking_time
-            }));
-            setBookings(mappedOrders as BookingWithCompany[]);
-        } else {
-            setBookings([]);
-        }
-    }, [user]);
-
-    const fetchAllData = React.useCallback(async () => {
-        setLoading(true);
-        try {
-            await Promise.all([fetchJobs(), fetchBookings()]);
-        } catch (error) {
-            console.error("Error fetching data:", error);
-        } finally {
-            setLoading(false);
-        }
-    }, [fetchJobs, fetchBookings]);
-
-    useEffect(() => {
-        if (user) {
-            fetchAllData();
-        }
-    }, [user, fetchAllData]);
-
     const handleAcceptProposal = () => {
-        // Refresh data to show new booking and updated job status
-        fetchAllData();
-        setActiveTab('active'); // Switch to active bookings tab
+        // Refresh handled automatically by query invalidation or manual refetch if needed
+        // For now, simpler to just let user know or navigate
+        // Ideally we would invalidateQueries(['client-orders']) here via queryClient
+        window.location.reload(); // Temporary simple refresh until mutation hook added
     };
 
     const activeBookings = bookings.filter(o => ['pending', 'confirmed', 'in_progress'].includes(o.status));

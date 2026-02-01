@@ -1,4 +1,15 @@
 
+export interface Address {
+  street: string;
+  number: string;
+  district: string;
+  city: string;
+  state: string;
+  cep: string;
+  lat?: number;
+  lng?: number;
+}
+
 export interface Company {
   id: string;
   slug: string; // Used for URL routing (e.g. /empresa/nome-da-empresa)
@@ -11,16 +22,7 @@ export interface Company {
   rating: number;
   reviewCount: number;
   description: string;
-  address: {
-    street: string;
-    number: string;
-    district: string;
-    city: string;
-    state: string;
-    cep: string;
-    lat?: number;
-    lng?: number;
-  };
+  address: Address;
   phone?: string;
   email: string;
   website?: string;
@@ -28,6 +30,65 @@ export interface Company {
   portfolio: PortfolioItem[];
   reviews: Review[];
   distance?: number; // Distance in km from user
+}
+
+// Database Interfaces (Reflecting Supabase raw response)
+export interface DbProfile {
+  id: string;
+  full_name: string | null;
+  avatar_url: string | null;
+}
+
+export interface DbReview {
+  id: string;
+  rating: number;
+  comment: string;
+  created_at: string;
+  client_id: string;
+  profiles?: DbProfile; // Joined via client_id
+}
+
+export interface DbService {
+  id: string;
+  title: string;
+  description: string;
+  price?: number;
+  duration?: string;
+  company_id: string;
+}
+
+export interface DbPortfolioItem {
+  id: string;
+  type: 'image' | 'video';
+  image_url: string; // Note: DB column is likely image_url based on previous code usually mapping to url in UI
+  caption?: string;
+  company_id: string;
+  created_at: string;
+}
+
+export interface DbCompany {
+  id: string;
+  slug: string;
+  company_name: string;
+  legal_name: string;
+  cnpj: string;
+  logo_url: string | null;
+  cover_image_url: string | null;
+  category: string;
+  description: string | null;
+  address: Address; // JSONB
+  phone: string;
+  email: string;
+  website: string | null;
+  rating?: number;
+  review_count?: number;
+  status?: string;
+  verified?: boolean;
+
+  // Joins
+  services?: DbService[];
+  reviews?: DbReview[];
+  portfolio_items?: DbPortfolioItem[];
 }
 
 export interface Service {
@@ -92,6 +153,82 @@ export interface Booking {
   };
 }
 
+// Extended UI Types for Client Orders
+export interface BookingWithCompany extends Booking {
+  companyName: string;
+  serviceName: string;
+  price: number;
+  date: string;
+  time: string;
+}
+
+export interface Proposal {
+  id: string;
+  company_id: string;
+  price: number;
+  cover_letter: string;
+  status: 'pending' | 'accepted' | 'rejected';
+  created_at: string;
+  company: {
+    name: string;
+    avatar_url?: string;
+  }
+}
+
+export interface JobRequest {
+  id: string;
+  title: string;
+  description: string;
+  status: 'open' | 'in_progress' | 'completed' | 'cancelled';
+  created_at: string;
+  budget_min?: number;
+  budget_max?: number;
+  proposals: Proposal[];
+  category?: { name: string };
+}
+
+// Database Types for Joins
+export interface DbBooking {
+  id: string;
+  client_id: string;
+  company_id: string;
+  service_title: string;
+  service_price?: number;
+  booking_date: string;
+  booking_time: string;
+  status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
+  created_at: string;
+  // Joins
+  companies?: DbCompany;
+}
+
+export interface DbProposal {
+  id: string;
+  job_id: string;
+  company_id: string;
+  price: number;
+  cover_letter: string;
+  status: 'pending' | 'accepted' | 'rejected';
+  created_at: string;
+  companies?: DbCompany; // Joined
+}
+
+export interface DbJobRequest {
+  id: string;
+  user_id: string;
+  title: string;
+  description: string;
+  status: 'open' | 'in_progress' | 'completed' | 'cancelled';
+  created_at: string;
+  budget_min?: number;
+  budget_max?: number;
+  category_id?: string;
+
+  // Joins
+  categories?: { name: string };
+  proposals?: DbProposal[];
+}
+
 export interface Notification {
   id: string;
   user_id: string;
@@ -101,4 +238,28 @@ export interface Notification {
   link?: string;
   read: boolean;
   created_at: string;
+}
+
+// Client Profile Types
+export interface Favorite {
+  id: string;
+  company: {
+    id: string;
+    name: string;
+    logo_url?: string;
+    description: string;
+    category: string;
+    rating: number;
+    review_count: number;
+    city: string;
+    state: string;
+  }
+}
+
+export interface Conversation {
+  contactId: string;
+  lastMessage: string;
+  date: string;
+  unread: boolean;
+  name: string;
 }

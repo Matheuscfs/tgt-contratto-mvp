@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useParams } from 'react-router-dom';
 import ServiceCard from '../components/ServiceCard';
@@ -14,8 +14,10 @@ import Badge from '../components/ui/Badge';
 // import StatsGrid from '../components/ui/StatsGrid'; // Unused
 import FAQSection from '../components/FAQSection';
 import CompanyCard from '../components/CompanyCard';
-import { Service, Company } from '../types';
+import { Service } from '../types';
 import { supabase } from '../lib/supabase';
+import { useCompanyProfile } from '../hooks/useCompanyProfile';
+import { useSimilarCompanies } from '../hooks/useSimilarCompanies';
 
 const HeartIcon: React.FC = () => (
   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
@@ -27,11 +29,8 @@ const CompanyProfilePage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
   const { user } = useAuth();
   const { addFavorite, removeFavorite, isFavorite } = useFavorites();
-
-  const [company, setCompany] = useState<Company | null>(null);
-  const [similarCompanies, setSimilarCompanies] = useState<Company[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data: company, isLoading: loading, error: queryError } = useCompanyProfile(slug);
+  const { data: similarCompanies = [] } = useSimilarCompanies(company?.category, company?.id);
 
   const [isMessageModalOpen, setIsMessageModalOpen] = useState(false);
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
@@ -40,175 +39,8 @@ const CompanyProfilePage: React.FC = () => {
   const [heroImageError, setHeroImageError] = useState(false);
   const [submittingReview, setSubmittingReview] = useState(false);
 
-  useEffect(() => {
-    const fetchCompany = async () => {
-      if (!slug) return;
-      setLoading(true);
-      try {
-        // Fetch company details
-        const { data: companyData, error: companyError } = await supabase
-          .from('companies')
-          .select('*')
-          .eq('slug', slug)
-          .single();
-
-        if (companyError) throw companyError;
-
-        // Fetch services for this company
-        const { data: servicesData, error: servicesError } = await supabase
-          .from('services')
-          .select('*')
-          .eq('company_id', companyData.id);
-
-        if (servicesError) throw servicesError;
-
-        // Fetch reviews for this company
-        const { data: reviewsData, error: reviewsError } = await supabase
-          .from('reviews')
-          .select('*')
-          .eq('company_id', companyData.id);
-
-        if (reviewsError) throw reviewsError;
-
-        // Fetch profiles for the reviews to get author names/avatars
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        let enrichedReviews: any[] = [];
-        if (reviewsData && reviewsData.length > 0) {
-          const userIds = [...new Set(reviewsData.map(r => r.client_id))];
-          const { data: profilesData, error: profilesError } = await supabase
-            .from('profiles')
-            .select('id, full_name, avatar_url')
-            .in('id', userIds);
-
-          if (!profilesError && profilesData) {
-            const profilesMap = new Map(profilesData.map(p => [p.id, p]));
-            enrichedReviews = reviewsData.map(r => {
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              const profile = profilesMap.get(r.client_id) as any;
-              return {
-                id: r.id,
-                author: profile?.full_name || 'Usuário',
-                avatar: profile?.avatar_url || 'https://i.pravatar.cc/150?u=default',
-                rating: r.rating,
-                comment: r.comment,
-                date: new Date(r.created_at).toLocaleDateString('pt-BR')
-              };
-            });
-          }
-        }
-
-        // Fetch Portfolio
-        const { data: portfolioData, error: portfolioError } = await supabase
-          .from('portfolio_items')
-          .select('*')
-          .eq('company_id', companyData.id)
-          .order('created_at', { ascending: false });
-
-        if (portfolioError && portfolioError.code !== 'PGRST116') {
-          console.warn("Error fetching portfolio:", portfolioError);
-        }
-
-        // Calculate Average Rating
-        const totalRating = enrichedReviews.reduce((acc: number, r: { rating: number }) => acc + r.rating, 0);
-        const avgRating = enrichedReviews.length > 0 ? (totalRating / enrichedReviews.length) : 0; // Default to 0 if no reviews
-
-        // Construct Company object compatible with UI types
-        // Note: Address is JSONB in DB but object in UI. Cast safely.
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const address = companyData.address as any;
-
-        const constructedCompany: Company = {
-          id: companyData.id,
-          slug: companyData.slug,
-          companyName: companyData.company_name,
-          legalName: companyData.legal_name,
-          cnpj: companyData.cnpj,
-          logo: companyData.logo_url || 'https://placehold.co/150',
-          coverImage: companyData.cover_image_url || 'https://placehold.co/1200x400',
-          category: companyData.category,
-          rating: parseFloat(avgRating.toFixed(1)),
-          reviewCount: enrichedReviews.length,
-          description: companyData.description || '',
-          address: {
-            street: address.street || '',
-            number: address.number || '',
-            district: address.district || '',
-            city: address.city || '',
-            state: address.state || '',
-            cep: address.cep || '',
-            lat: address.lat || -23.55052,
-            lng: address.lng || -46.63330
-          },
-          phone: companyData.phone,
-          email: companyData.email,
-          website: companyData.website,
-          services: servicesData || [],
-          portfolio: portfolioData?.map(p => p.image_url) || [],
-          reviews: enrichedReviews
-        };
-
-        setCompany(constructedCompany);
-
-        // Fetch Similar Companies
-        if (companyData.category) {
-          const { data: similarData, error: similarError } = await supabase
-            .from('companies')
-            .select('*, reviews(rating)')
-            .eq('category', companyData.category)
-            .neq('id', companyData.id)
-            .limit(3);
-
-          if (!similarError && similarData) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const constructedSimilar = similarData.map((comp: any) => {
-              const compAddress = comp.address || {};
-              const compReviews = comp.reviews || [];
-              const totalRating = compReviews.reduce((acc: number, r: { rating: number }) => acc + r.rating, 0);
-              const avgRating = compReviews.length > 0 ? (totalRating / compReviews.length) : 0;
-
-              return {
-                id: comp.id,
-                slug: comp.slug,
-                companyName: comp.company_name,
-                legalName: comp.legal_name,
-                cnpj: comp.cnpj,
-                logo: comp.logo_url || 'https://placehold.co/150',
-                coverImage: comp.cover_image_url || 'https://placehold.co/1200x400',
-                category: comp.category,
-                rating: parseFloat(avgRating.toFixed(1)),
-                reviewCount: compReviews.length,
-                description: comp.description || '',
-                address: {
-                  street: compAddress.street || '',
-                  number: compAddress.number || '',
-                  district: compAddress.district || '',
-                  city: compAddress.city || '',
-                  state: compAddress.state || '',
-                  cep: compAddress.cep || '',
-                  lat: compAddress.lat || -23.55052,
-                  lng: compAddress.lng || -46.63330
-                },
-                phone: comp.phone,
-                email: comp.email,
-                website: comp.website,
-                services: [], // Not needed for card
-                portfolio: [], // Not needed for card
-                reviews: [] // Not needed for card details
-              };
-            });
-            setSimilarCompanies(constructedSimilar);
-          }
-        }
-      } catch (err) {
-        console.error("Error fetching company:", err);
-        setError("Empresa não encontrada ou erro ao carregar.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchCompany();
-  }, [slug]);
+  // Handle errors from query
+  const error = queryError ? (queryError as Error).message : null;
 
 
   if (loading) return <div className="text-center py-20">Carregando perfil...</div>;

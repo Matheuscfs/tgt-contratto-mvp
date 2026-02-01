@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 import FileUpload from '@/components/FileUpload';
+import LoadingSkeleton from '@/components/ui/LoadingSkeleton';
 import { CATEGORIES } from '../../constants';
 import { useToast } from '../../contexts/ToastContext';
 import { useCompany } from '../../contexts/CompanyContext';
@@ -77,17 +78,28 @@ const DashboardPerfilPage: React.FC = () => {
   };
 
   const uploadImage = async (file: File, bucket: string, path: string) => {
-    const { error } = await supabase.storage
-      .from(bucket)
-      .upload(path, file, { upsert: true });
+    try {
+      const { error } = await supabase.storage
+        .from(bucket)
+        .upload(path, file, { upsert: true });
 
-    if (error) throw error;
+      if (error) {
+        if (error.message.includes('Bucket not found')) {
+          console.error(`Bucket '${bucket}' missing. Please checking database migrations.`);
+          throw new Error(`Erro configuração servidor: Bucket '${bucket}' não encontrado.`);
+        }
+        throw error;
+      };
 
-    const { data: { publicUrl } } = supabase.storage
-      .from(bucket)
-      .getPublicUrl(path);
+      const { data: { publicUrl } } = supabase.storage
+        .from(bucket)
+        .getPublicUrl(path);
 
-    return publicUrl;
+      return publicUrl;
+    } catch (error) {
+      console.error("Upload failed:", error);
+      throw error;
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -153,10 +165,12 @@ const DashboardPerfilPage: React.FC = () => {
     }
   };
 
-  if (companyLoading) {
+  // Only show full page loader if we have no company data yet
+  if (companyLoading && !company) {
     return (
       <div className="flex items-center justify-center h-full">
-        <p className="text-gray-500">Carregando dados da empresa...</p>
+        <LoadingSkeleton className="h-4 w-32" count={3} />
+        <p className="ml-2 text-gray-500">Carregando dados da empresa...</p>
       </div>
     );
   }

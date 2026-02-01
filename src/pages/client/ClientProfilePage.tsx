@@ -1,49 +1,32 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
-import { UserProfile, Booking } from '../../types';
+import { UserProfile } from '../../types';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import { useToast } from '../../contexts/ToastContext';
 import Badge from '../../components/ui/Badge';
 import { Link, useLocation } from 'react-router-dom';
+import { useClientProfileData } from '../../hooks/useClientProfileData';
 
-// Icons
+// Icons need to be redefined or imported if they were local
 const UserIcon = () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>;
 const CalendarIcon = () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>;
 const ChatIcon = () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" /></svg>;
 const SignOutIcon = () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>;
 const HeartIcon = () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>;
 
-interface Favorite {
-  id: string;
-  company: {
-    id: string;
-    name: string;
-    logo_url?: string;
-    description: string;
-    category: string;
-    rating: number;
-    review_count: number;
-    city: string;
-    state: string;
-  }
-}
-
-interface Conversation {
-  contactId: string;
-  lastMessage: string;
-  date: string;
-  unread: boolean;
-  name: string;
-}
-
 const ClientProfilePage: React.FC = () => {
   const { user, signOut } = useAuth();
   const { addToast } = useToast();
   const location = useLocation();
   const [activeTab, setActiveTab] = useState<'profile' | 'bookings' | 'messages' | 'favorites'>('bookings');
-  const [loading, setLoading] = useState(false);
+
+  // Unified Data Fetching
+  const { data, isLoading: loading } = useClientProfileData(user?.id);
+
+  // Local state for profile form editing
+  const [profileData, setProfileData] = useState<UserProfile | null>(null);
 
   useEffect(() => {
     const state = location.state as { activeTab?: 'profile' | 'bookings' | 'messages' };
@@ -52,119 +35,29 @@ const ClientProfilePage: React.FC = () => {
     }
   }, [location]);
 
-  // Profile State
-  const [profileData, setProfileData] = useState<UserProfile | null>(null);
-
-  // Bookings State
-  const [bookings, setBookings] = useState<Booking[]>([]);
-
-  // Messages State (Simplified Conversation List)
-  const [conversations, setConversations] = useState<Conversation[]>([]);
-
-  // Favorites State
-  const [favorites, setFavorites] = useState<Favorite[]>([]);
-
-  // -- FETCH DATA --
+  // Sync profile data for editing when fetched
   useEffect(() => {
-    if (!user) return;
+    if (data?.profile) {
+      setProfileData({ ...user!, ...data.profile });
+    } else if (user) {
+      setProfileData({ ...user } as UserProfile);
+    }
+  }, [data?.profile, user]);
 
-    const fetchAllData = async () => {
-      setLoading(true);
-      try {
-        // 1. Fetch Profile
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .single();
-
-        if (profile) {
-          setProfileData({ ...user, ...profile });
-        } else {
-          // Fallback if no profile exists yet
-          setProfileData({ ...user } as UserProfile);
-        }
-
-        // 2. Fetch Bookings
-        const { data: bookingsData } = await supabase
-          .from('bookings')
-          .select('*, companies(name)')
-          .eq('client_id', user.id)
-          .order('created_at', { ascending: false });
-
-        setBookings(bookingsData || []);
-
-        // 3. Fetch Messages (Grouped by Company)
-        // Ideally we use a View or more complex query. Simple grouping here.
-        const { data: msgs } = await supabase
-          .from('messages')
-          .select('*')
-          .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
-          .order('created_at', { ascending: false });
-
-        // 4. Fetch Favorites
-        const { data: favoritesData } = await supabase
-          .from('favorites')
-          .select(`
-                *,
-                company:companies(id, name, logo_url, description, category, rating, review_count, city, state)
-            `)
-          .eq('user_id', user.id);
-
-        setFavorites(favoritesData || []);
-
-        if (msgs) {
-          // Determine unique contacts (Companies)
-          const contactIds = new Set();
-          const convos = [];
-          for (const m of msgs) {
-            const otherId = m.sender_id === user.id ? m.receiver_id : m.sender_id;
-            if (!contactIds.has(otherId)) {
-              contactIds.add(otherId);
-              convos.push({
-                contactId: otherId,
-                lastMessage: m.content,
-                date: m.created_at,
-                unread: m.receiver_id === user.id && !m.read
-              });
-            }
-          }
-          // Fetch company names for these contacts
-          const contactIdArray = Array.from(contactIds);
-          if (contactIdArray.length > 0) {
-            const { data: companies } = await supabase
-              .from('companies')
-              .select('id, name, profile_id')
-              .in('profile_id', contactIdArray);
-
-            // Merge names
-            const finalConvos: Conversation[] = convos.map(c => {
-              const comp = companies?.find((co) => co.profile_id === c.contactId);
-              return { ...c, name: comp?.name || 'Empresa Desconhecida' };
-            });
-            setConversations(finalConvos);
-          }
-        }
-
-        addToast("Erro ao carregar dados.", "error");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchAllData();
-  }, [user, addToast]);
+  const bookings = data?.bookings || [];
+  const conversations = data?.conversations || [];
+  const favorites = data?.favorites || [];
 
   // -- PROFILE HANDLERS --
   const handleProfileUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !profileData) return;
-    setLoading(true);
+
     try {
       const { error } = await supabase.from('profiles').upsert({
         id: user.id,
         email: user.email,
-        full_name: profileData.name, // Ensure consistency
+        full_name: profileData.name,
         cpf: profileData.cpf,
         phone: profileData.phone,
         date_of_birth: profileData.date_of_birth,
@@ -180,12 +73,9 @@ const ClientProfilePage: React.FC = () => {
 
       if (error) throw error;
       addToast("Perfil atualizado!", "success");
-      addToast("Perfil atualizado!", "success");
     } catch (err) {
       console.error(err);
       addToast("Erro ao atualizar.", "error");
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -264,7 +154,7 @@ const ClientProfilePage: React.FC = () => {
           {activeTab === 'bookings' && (
             <div className="space-y-6">
               <h2 className="text-2xl font-bold text-gray-800">Meus Pedidos e Agendamentos</h2>
-              {bookings.length === 0 ? (
+              {loading ? <p>Carregando...</p> : bookings.length === 0 ? (
                 <div className="bg-white rounded-xl shadow-sm p-12 text-center">
                   <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                     <CalendarIcon />
@@ -317,7 +207,7 @@ const ClientProfilePage: React.FC = () => {
           {activeTab === 'messages' && (
             <div className="space-y-6">
               <h2 className="text-2xl font-bold text-gray-800">Minhas Mensagens</h2>
-              {conversations.length === 0 ? (
+              {loading ? <p>Carregando...</p> : conversations.length === 0 ? (
                 <div className="bg-white rounded-xl shadow-sm p-12 text-center">
                   <p className="text-gray-500">Você ainda não iniciou conversas.</p>
                 </div>
@@ -355,13 +245,11 @@ const ClientProfilePage: React.FC = () => {
             </div>
           )}
 
-
-
           {/* FAVORITES TAB */}
           {activeTab === 'favorites' && (
             <div className="space-y-6">
               <h2 className="text-2xl font-bold text-gray-800">Meus Favoritos</h2>
-              {favorites.length === 0 ? (
+              {loading ? <p>Carregando...</p> : favorites.length === 0 ? (
                 <div className="bg-white rounded-xl shadow-sm p-12 text-center">
                   <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-400">
                     <HeartIcon />

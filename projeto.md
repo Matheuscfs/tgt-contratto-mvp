@@ -1,100 +1,49 @@
-title Service Marketplace System Architecture
+# Arquitetura do Sistema TGT Contratto
 
-// Actors
-Clients Web [icon: monitor, label: "Clients (Web)"]
-Clients Mobile [icon: smartphone, label: "Clients (Mobile)"]
-Professionals Web [icon: monitor, label: "Professionals (Web)"]
-Professionals Mobile [icon: smartphone, label: "Professionals (Mobile)"]
-Admins Dashboard [icon: layout, label: "Admins (Dashboard)"]
+## Visão Geral
+O TGT Contratto é uma plataforma de marketplace de serviços construída como uma Single Page Application (SPA) moderna, utilizando Supabase como Backend-as-a-Service (BaaS) para autenticação, banco de dados e tempo real.
 
-// Edge Layer
-Edge Layer [icon: cloud] {
-  Cloudflare CDN [icon: cloudflare]
-  Load Balancer [icon: aws-elb]
-  API Gateway [icon: aws-api-gateway]
-}
+## Stack Tecnológico
 
-// Backend Cluster (Microservices)
-Backend Cluster [icon: server, color: blue] {
-  Auth Service [icon: key]
-  User Profile Service [icon: user]
-  Marketplace Service [icon: shopping-bag, label: "Marketplace/Order Service"]
-  Matching Service [icon: search]
-  Chat Service [icon: message-square]
-  Payment Service [icon: credit-card]
-  Notification Service [icon: bell]
-  Ratings Reviews Service [icon: star, label: "Ratings & Reviews"]
-  Analytics Reporting Service [icon: bar-chart-2, label: "Analytics/Reporting"]
-  "Multi-Tenancy Manager" [icon: layers]
-}
+### Frontend
+- **Core:** React 19
+- **Build Tool:** Vite
+- **Linguagem:** TypeScript
+- **Estilização:** Tailwind CSS v4
+- **State Management:** 
+  - `@tanstack/react-query`: Gerenciamento de estado de servidor, cache e sincronização de dados.
+  - `React Context API`: Estados globais de aplicação (Auth, Toast, Theme).
+- **Roteamento:** React Router DOM v6
+- **Animações:** Framer Motion
 
-// Data Layer
-Data Layer [icon: database, color: green] {
-  PostgreSQL [icon: postgres]
-  MongoDB [icon: mongodb]
-  Redis [icon: redis]
-  S3 Bucket [icon: aws-s3]
-  Elasticsearch [icon: elasticsearch]
-}
+### Backend (Supabase)
+- **Database:** PostgreSQL
+- **Auth:** Supabase Auth (Email/Password, Social - Google)
+- **Realtime:** Supabase Realtime (WebSockets para Chat e Notificações)
+- **Storage:** Supabase Storage (Imagens de perfil, Portfólio)
+- **API:** Interface gerada automaticamente via PostgREST + RPC Functions para lógicas complexas (Geospatial).
 
-// External Integrations
-External Integrations [icon: globe, color: orange] {
-  Stripe [icon: stripe]
-  PayPal [icon: paypal]
-  Twilio [icon: twilio]
-  SendGrid [icon: sendgrid]
-}
+## Arquitetura de Dados
 
-// Connections: Actors to Edge Layer
-Clients Web > Cloudflare CDN
-Clients Mobile > Cloudflare CDN
-Professionals Web > Cloudflare CDN
-Professionals Mobile > Cloudflare CDN
+### Tabelas Principais
+- `profiles`: Dados públicos de todos os usuários (Clientes e Empresas).
+- `companies`: Perfil detalhado de prestadores de serviço.
+- `services`: Serviços oferecidos pelas empresas.
+- `bookings`: Agendamentos e pedidos.
+- `reviews`: Avaliações e comentários.
+- `favorites`: Lista de favoritos dos clientes.
+- `messages`: Chat em tempo real.
+- `notifications`: Notificações do sistema.
 
-// Edge Layer flow
-Cloudflare CDN > Load Balancer
-Load Balancer > API Gateway
+### Segurança
+- **RLS (Row Level Security):** Todas as tabelas possuem políticas de segurança a nível de linha para garantir que usuários acessem apenas seus próprios dados ou dados públicos permitidos.
 
-// API Gateway to Backend Cluster
+## Fluxo de Autenticação
+1. Usuário faz login via Supabase Auth.
+2. Trigger `handle_new_user` cria automaticamente entrada na tabela `public.profiles`.
+3. Contexto de Autenticação (`AuthContext`) mantém sessão e estado do usuário.
 
-// Backend Cluster to Data Layer
-Auth Service <> PostgreSQL
-User Profile Service <> PostgreSQL
-Marketplace Service <> PostgreSQL
-Marketplace Service <> S3 Bucket: portfolio images/invoices
-Matching Service <> PostgreSQL
-Matching Service <> Elasticsearch: search/match
-Chat Service <> MongoDB: chat history
-Chat Service <> Redis: real-time presence/cache
-Payment Service <> PostgreSQL
-Payment Service <> S3 Bucket: invoices
-Notification Service <> PostgreSQL
-Notification Service <> Redis: queue/cache
-Ratings Reviews Service <> PostgreSQL
-Analytics Reporting Service <> PostgreSQL
-Analytics Reporting Service <> Redis: cache
-
-// Real-time Chat (WebSocket)
-Clients Web <-- Chat Service: websocket
-Clients Mobile <-- Chat Service: websocket
-Professionals Web <-- Chat Service: websocket
-Professionals Mobile <-- Chat Service: websocket
-
-// Payment Integrations
-Payment Service > Stripe: payments/escrow
-Payment Service > PayPal: payments/escrow
-
-// Notification Integrations
-Notification Service > Twilio: SMS
-Notification Service > SendGrid: Email
-
-// Admins Dashboard connections
-
-// Multi-Tenancy
-"Multi-Tenancy Manager" <> PostgreSQL
-
-// Optional: Notification to Admins
-Notification Service > Admins Dashboard: admin alerts
-API Gateway > Backend Cluster
-Cloudflare CDN < Admins Dashboard
-Analytics Reporting Service < Admins Dashboard
+## Integrações Refatoradas
+- **Header:** Decomposto em sub-componentes (`UserDropdown`, `MobileMenu`, `LoginDropdown`, `DesktopNav`) para melhor manutenção.
+- **Search:** Lógica de busca e filtros centralizada no hook `useCompanySearch`, integrando URL state com Supabase queries.
+- **State:** Migração de contextos legados para TanStack Query (`CompanyContext`, `FavoritesContext`) para melhor performance e UX (Optimistic Updates).

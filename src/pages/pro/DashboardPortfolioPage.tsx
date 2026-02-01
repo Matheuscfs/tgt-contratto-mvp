@@ -58,7 +58,8 @@ const DashboardPortfolioPage: React.FC = () => {
     }, [user, addToast]);
 
 
-    const handleFileUpload = async (file: File) => {
+    const handleFileUpload = async (file: File | null) => {
+        if (!file) return; // Ignore null files (e.g. from removeFile)
         if (!companyId) return;
         setUploading(true);
 
@@ -72,7 +73,12 @@ const DashboardPortfolioPage: React.FC = () => {
                 .from('portfolio') // Requires 'portfolio' bucket
                 .upload(filePath, file);
 
-            if (uploadError) throw uploadError;
+            if (uploadError) {
+                if (uploadError.message.includes('Bucket not found')) {
+                    throw new Error("Erro de configuração: Bucket 'portfolio' não encontrado.");
+                }
+                throw uploadError;
+            }
 
             // 2. Get Public URL
             const { data: { publicUrl } } = supabase.storage
@@ -97,8 +103,9 @@ const DashboardPortfolioPage: React.FC = () => {
             addToast("Imagem adicionada com sucesso!", "success");
 
         } catch (err) {
-            console.error("Error uploading item:", err);
-            addToast("Erro ao adicionar imagem.", "error");
+            const error = err as Error;
+            console.error("Error uploading item:", error);
+            addToast(error.message || "Erro ao adicionar imagem.", "error");
         } finally {
             setUploading(false);
         }

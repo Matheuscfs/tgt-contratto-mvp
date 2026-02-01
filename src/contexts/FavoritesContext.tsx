@@ -1,4 +1,5 @@
-import React, { createContext, useState, useContext, useEffect, ReactNode, useCallback } from 'react';
+import React, { createContext, useContext, ReactNode, useCallback } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from './AuthContext';
 import { supabase } from '../lib/supabase';
 import { useToast } from './ToastContext';
@@ -8,6 +9,7 @@ interface FavoritesContextType {
   addFavorite: (companyId: string) => Promise<void>;
   removeFavorite: (companyId: string) => Promise<void>;
   isFavorite: (companyId: string) => boolean;
+  loading: boolean;
 }
 
 const FavoritesContext = createContext<FavoritesContextType | undefined>(undefined);
@@ -15,90 +17,120 @@ const FavoritesContext = createContext<FavoritesContextType | undefined>(undefin
 export const FavoritesProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { user } = useAuth();
   const { addToast } = useToast();
-  const [favorites, setFavorites] = useState<string[]>([]);
-  // const [loading, setLoading] = useState(false); // Removed unused loading state
+  const queryClient = useQueryClient();
+  const userId = user?.id;
+  const isClient = user?.type === 'client';
 
-  useEffect(() => {
-    const fetchFavorites = async () => {
-      if (user && user.type === 'client') {
-        const { data, error } = await supabase
-          .from('favorites')
-          .select('company_id')
-          .eq('user_id', user.id);
+  // Fetch Favorites
+  const { data: favorites = [], isLoading: loading } = useQuery({
+    queryKey: ['favorites', userId],
+    queryFn: async () => {
+      if (!userId || !isClient) return [];
 
-        if (!error && data) {
-          setFavorites(data.map(f => f.company_id));
-        } else if (error) {
-          console.error("Error fetching favorites:", error);
-        }
-      } else {
-        setFavorites([]);
-      }
-    };
-
-    fetchFavorites();
-  }, [user]);
-
-  const addFavorite = useCallback(async (companyId: string) => {
-    if (!user || user.type !== 'client') {
-      addToast("Faça login como cliente para favoritar.", "info");
-      return;
-    }
-
-    // Optimistic update
-    setFavorites(prev => [...prev, companyId]);
-
-    try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('favorites')
-        .insert({ user_id: user.id, company_id: companyId });
+        .select('company_id')
+        .eq('user_id', userId);
 
       if (error) {
-        // Rollback
-        setFavorites(prev => prev.filter(id => id !== companyId));
-        console.error("Error adding favorite:", error);
-        addToast("Erro ao adicionar favorito.", "error");
-      } else {
-        addToast("Adicionado aos favoritos!", "success");
+        console.error("Error fetching favorites:", error);
+        throw error;
       }
-    } catch (err) {
-      setFavorites(prev => prev.filter(id => id !== companyId));
-      console.error("Exception adding favorite:", err);
+
+      return data.map(f => f.company_id);
+    },
+    enabled: !!userId && isClient,
+    staleTime: 1000 * 60 * 30, // 30 mins
+  });
+
+  // Add Mutation
+  const addMutation = useMutation({
+    mutationFn: async (companyId: string) => {
+      if (!userId) throw new Error("User not logged in");
+
+      const { error } = await supabase
+        .from('favorites')
+        .insert({ user_id: userId, company_id: companyId });
+
+      if (error) throw error;
+    },
+    onMutate: async (companyId) => {
+      await queryClient.cancelQueries({ queryKey: ['favorites', userId] });
+      const previousFavorites = queryClient.getQueryData<string[]>(['favorites', userId]);
+
+      // Optimistic update
+      queryClient.setQueryData<string[]>(['favorites', userId], (old = []) => [...old, companyId]);
+
+      return { previousFavorites };
+    },
+    onError: (_err, _companyId, context) => {
+      if (context?.previousFavorites) {
+        queryClient.setQueryData(['favorites', userId], context.previousFavorites);
+      }
+      addToast("Erro ao adicionar favorito.", "error");
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['favorites', userId] });
+    },
+    onSuccess: () => {
+      addToast("Adicionado aos favoritos!", "success");
     }
-  }, [user, addToast]);
+  });
 
-  const removeFavorite = useCallback(async (companyId: string) => {
-    if (!user || user.type !== 'client') return;
+  // Remove Mutation
+  const removeMutation = useMutation({
+    mutationFn: async (companyId: string) => {
+      if (!userId) throw new Error("User not logged in");
 
-    // Optimistic update
-    setFavorites(prev => prev.filter(id => id !== companyId));
-
-    try {
       const { error } = await supabase
         .from('favorites')
         .delete()
-        .match({ user_id: user.id, company_id: companyId }); // match is cleaner for multiple keys
+        .match({ user_id: userId, company_id: companyId });
 
-      if (error) {
-        // Rollback
-        setFavorites(prev => [...prev, companyId]);
-        console.error("Error removing favorite:", error);
-        addToast("Erro ao remover favorito.", "error");
-      } else {
-        addToast("Removido dos favoritos.", "info");
+      if (error) throw error;
+    },
+    onMutate: async (companyId) => {
+      await queryClient.cancelQueries({ queryKey: ['favorites', userId] });
+      const previousFavorites = queryClient.getQueryData<string[]>(['favorites', userId]);
+
+      // Optimistic update
+      queryClient.setQueryData<string[]>(['favorites', userId], (old = []) => old.filter(id => id !== companyId));
+
+      return { previousFavorites };
+    },
+    onError: (_err, _companyId, context) => {
+      if (context?.previousFavorites) {
+        queryClient.setQueryData(['favorites', userId], context.previousFavorites);
       }
-    } catch (err) {
-      setFavorites(prev => [...prev, companyId]);
-      console.error("Exception removing favorite:", err);
+      addToast("Erro ao remover favorito.", "error");
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['favorites', userId] });
+    },
+    onSuccess: () => {
+      addToast("Removido dos favoritos.", "info");
     }
-  }, [user, addToast]);
+  });
+
+  const addFavorite = useCallback(async (companyId: string) => {
+    if (!isClient) {
+      addToast("Faça login como cliente para favoritar.", "info");
+      return;
+    }
+    await addMutation.mutateAsync(companyId);
+  }, [isClient, addToast, addMutation]);
+
+  const removeFavorite = useCallback(async (companyId: string) => {
+    if (!isClient) return;
+    await removeMutation.mutateAsync(companyId);
+  }, [isClient, removeMutation]);
 
   const isFavorite = useCallback((companyId: string): boolean => {
     return favorites.includes(companyId);
   }, [favorites]);
 
   return (
-    <FavoritesContext.Provider value={{ favorites, addFavorite, removeFavorite, isFavorite }}>
+    <FavoritesContext.Provider value={{ favorites, addFavorite, removeFavorite, isFavorite, loading }}>
       {children}
     </FavoritesContext.Provider>
   );

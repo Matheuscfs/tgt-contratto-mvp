@@ -10,7 +10,7 @@ export default defineConfig(({ mode }) => {
       strictPort: true,
       host: '0.0.0.0',
       headers: {
-        "Content-Security-Policy": "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: https://*; connect-src 'self' http://localhost:* ws://localhost:* https://* wss://*;"
+        // "Content-Security-Policy": "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: https://*; connect-src 'self' http://localhost:* ws://localhost:* https://* wss://*;"
       }
     },
     plugins: [react()],

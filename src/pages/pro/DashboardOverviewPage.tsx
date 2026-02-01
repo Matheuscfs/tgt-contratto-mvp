@@ -154,7 +154,7 @@ const DashboardOverviewPage: React.FC = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <AnimatedSection delay={0.2} className="bg-white shadow rounded-lg p-6">
                     <h3 className="text-lg font-bold mb-4 text-gray-800">Visualizações (Últimos 7 dias)</h3>
-                    <div className="h-64">
+                    <div className="h-64 w-full min-h-[256px]">
                         <ResponsiveContainer width="100%" height="100%">
                             <AreaChart data={viewsData}>
                                 <defs>
@@ -175,7 +175,7 @@ const DashboardOverviewPage: React.FC = () => {
 
                 <AnimatedSection delay={0.3} className="bg-white shadow rounded-lg p-6">
                     <h3 className="text-lg font-bold mb-4 text-gray-800">Crescimento de Orçamentos</h3>
-                    <div className="h-64">
+                    <div className="h-64 w-full min-h-[256px]">
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={quotesData}>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} />

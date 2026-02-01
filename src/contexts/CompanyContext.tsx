@@ -1,4 +1,5 @@
-import React, { createContext, useState, useContext, useEffect, ReactNode, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, ReactNode } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { useAuth } from './AuthContext';
 
@@ -40,107 +41,92 @@ const CompanyContext = createContext<CompanyContextType | undefined>(undefined);
 
 export const CompanyProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const { user } = useAuth();
-    const [company, setCompany] = useState<CompanyData | null>(null);
-    const [loading, setLoading] = useState(true);
+    const queryClient = useQueryClient();
 
-    const fetchCompany = useCallback(async () => {
-        if (!user || user.type !== 'company') {
-            setCompany(null);
-            setLoading(false);
-            return;
-        }
+    const isCompany = user?.type === 'company';
+    const profileId = user?.id;
 
-        try {
+    // Use Query for fetching company data
+    const {
+        data: company,
+        isLoading: loading,
+        refetch
+    } = useQuery({
+        queryKey: ['company', profileId],
+        queryFn: async () => {
+            if (!profileId || !isCompany) return null;
+
             const { data, error } = await supabase
                 .from('companies')
                 .select('*')
-                .eq('profile_id', user.id)
+                .eq('profile_id', profileId)
                 .limit(1)
                 .maybeSingle();
 
-            if (error) {
-                console.error('Error fetching company:', error);
-                setCompany(null);
-            } else {
-                // Map flat DB fields to nested Address object
-                const addressData: Address = {
-                    street: data.address?.street || '',
-                    city: data.address?.city || '',
-                    state: data.address?.state || '',
-                    cep: data.address?.cep || '',
-                    number: data.address?.number || '',
-                    district: data.address?.district || ''
-                };
+            if (error) throw error;
+            if (!data) return null;
 
-                const mappedCompany: CompanyData = {
-                    ...data,
-                    address: addressData,
-                };
-                setCompany(mappedCompany);
-            }
-        } catch (err: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
-            const msg = err?.message || '';
-            const isAbort = msg.includes('aborted') || msg.includes('AbortError') || err?.name === 'AbortError';
+            // Map flat DB fields to nested Address object
+            const addressData: Address = {
+                street: data.address?.street || '',
+                city: data.address?.city || '',
+                state: data.address?.state || '',
+                cep: data.address?.cep || '',
+                number: data.address?.number || '',
+                district: data.address?.district || ''
+            };
 
-            if (isAbort) return;
+            return {
+                ...data,
+                address: addressData,
+            } as CompanyData;
+        },
+        enabled: !!profileId && isCompany,
+        staleTime: 1000 * 60 * 10, // 10 minutes (rarely changes)
+    });
 
-            console.error('Error in fetchCompany:', err);
-            setCompany(null);
-        } finally {
-            setLoading(false);
-        }
-    }, [user]);
+    // Mutation for updating company data
+    const updateMutation = useMutation({
+        mutationFn: async (data: Partial<CompanyData>) => {
+            if (!company?.id) throw new Error("No company loaded");
 
-    const refreshCompany = async () => {
-        setLoading(true);
-        await fetchCompany();
-    };
-
-    const updateCompany = async (data: Partial<CompanyData>) => {
-        // ... (existing update logic if needed, but we are only replacing the block from fetchCompany to useEffect end)
-        if (!company) return;
-
-        try {
-            const updatePayload: Partial<CompanyData> = { ...data };
             const { error } = await supabase
                 .from('companies')
-                .update(updatePayload)
+                .update(data)
                 .eq('id', company.id);
 
-            if (error) {
-                console.error('Error updating company:', error);
-                throw error;
-            }
-
-            // Refresh company data after update
-            await refreshCompany();
-        } catch (err) {
-            console.error('Error in updateCompany:', err);
-            throw err;
+            if (error) throw error;
+        },
+        onSuccess: () => {
+            // Invalidate broadly to ensure Public Profile (referencing via slug) also updates
+            queryClient.invalidateQueries({ queryKey: ['company'] });
         }
+    });
+
+    const updateCompany = async (data: Partial<CompanyData>) => {
+        await updateMutation.mutateAsync(data);
+    };
+
+    const refreshCompany = async () => {
+        await refetch();
     };
 
     useEffect(() => {
-        fetchCompany();
-
-        // Set up real-time subscription for company changes
-        if (user && user.type === 'company') {
+        // Real-time subscription
+        if (profileId && isCompany) {
             const subscription = supabase
-                .channel('company-changes')
+                .channel(`company-changes-${profileId}`)
                 .on(
                     'postgres_changes',
                     {
                         event: '*',
                         schema: 'public',
                         table: 'companies',
-                        filter: `profile_id=eq.${user.id}`,
+                        filter: `profile_id=eq.${profileId}`,
                     },
                     (payload) => {
-                        console.log('Company data changed:', payload);
-                        // For simplicity, just refresh to get clean mapping
-                        if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
-                            fetchCompany();
-                        }
+                        console.log('Company data changed via realtime:', payload);
+                        queryClient.invalidateQueries({ queryKey: ['company'] });
                     }
                 )
                 .subscribe();
@@ -149,10 +135,15 @@ export const CompanyProvider: React.FC<{ children: ReactNode }> = ({ children })
                 subscription.unsubscribe();
             };
         }
-    }, [user, fetchCompany]); // Re-subscribe if user changes; fetchCompany update handled by useCallback
+    }, [profileId, isCompany, queryClient]);
 
     return (
-        <CompanyContext.Provider value={{ company, loading, refreshCompany, updateCompany }}>
+        <CompanyContext.Provider value={{
+            company: company || null,
+            loading,
+            refreshCompany,
+            updateCompany
+        }}>
             {children}
         </CompanyContext.Provider>
     );
