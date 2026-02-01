@@ -19,6 +19,7 @@ const ClientLoginPage: React.FC = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [portalError, setPortalError] = useState<string | null>(null);
     const navigate = useNavigate();
     const { addToast } = useToast();
     const { signInWithGoogle } = useAuth();
@@ -39,6 +40,7 @@ const ClientLoginPage: React.FC = () => {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);
+        setPortalError(null); // Clear previous portal errors
 
         try {
             const { data, error } = await supabase.auth.signInWithPassword({
@@ -49,35 +51,17 @@ const ClientLoginPage: React.FC = () => {
             if (error) throw error;
 
             if (data.session) {
-                // Double check custom logic for clients? 
-                // For now just allow login. If they are accidentally an agency logging in as client, 
-                // the header logic will handle their profile link, but here we enforce client destination.
-
                 const metadataType = data.session.user.user_metadata.type as string;
 
                 if (metadataType === 'company') {
-                    // Warn them? Or just redirect to their dashboard anyway?
-                    // The user request said "If user is client, directed to Home... not Dashboard".
-                    // This page is FOR CLIENTS. If a company logs in here, arguably we should redirect them to dashboard OR warn.
-                    // Let's redirect to dashboard if they are actually a company, but show a toast maybe?
-                    // Actually, best strictly following request: "/login/cliente -> Foco total no contratante"
-                    // If a company logs in here, technically they are authenticated. 
-                    // I will just redirect to home/profile if client, or dashboard if company to be safe, 
-                    // BUT the UI is tailored for clients (e.g. text).
+                    // Company user trying to login via client portal
+                    // Sign them out immediately to clear the session
+                    await supabase.auth.signOut();
 
-                    addToast('Login realizado! Você entrou com uma conta de Empresa.', 'info');
-                    const { data: companyData } = await supabase
-                        .from('companies')
-                        .select('slug')
-                        .eq('profile_id', data.session.user.id)
-                        .maybeSingle();
-
-                    if (companyData?.slug) {
-                        navigate(`/dashboard/empresa/${companyData.slug}`);
-                    } else {
-                        navigate('/empresa/cadastro');
-                    }
+                    // Set portal error to trigger friendly UI message
+                    setPortalError('WRONG_PORTAL_TYPE');
                 } else {
+                    // Valid client login
                     addToast('Login realizado com sucesso!', 'success');
                     navigate('/');
                 }
@@ -85,7 +69,8 @@ const ClientLoginPage: React.FC = () => {
         } catch (err: unknown) {
             const error = err as Error;
             console.error('Login error:', error);
-            addToast(error.message || 'Falha ao realizar login. Verifique suas credenciais.', 'error');
+            // Generic error message for security (prevents user enumeration)
+            addToast('Credenciais inválidas. Verifique seu e-mail e senha.', 'error');
         } finally {
             setIsLoading(false);
         }
@@ -137,6 +122,32 @@ const ClientLoginPage: React.FC = () => {
                             Esqueceu sua senha?
                         </Link>
                     </div>
+
+                    {/* Portal Error Message */}
+                    {portalError === 'WRONG_PORTAL_TYPE' && (
+                        <div className="rounded-md bg-amber-50 border border-amber-200 p-4">
+                            <div className="flex">
+                                <div className="flex-shrink-0">
+                                    <svg className="h-5 w-5 text-amber-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                    </svg>
+                                </div>
+                                <div className="ml-3 flex-1">
+                                    <p className="text-sm font-medium text-amber-800">
+                                        Este login pertence a uma conta de empresa.
+                                    </p>
+                                    <div className="mt-3">
+                                        <Link
+                                            to="/login/empresa"
+                                            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-brand-primary hover:bg-brand-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-primary transition-colors"
+                                        >
+                                            Acessar Área de Empresas
+                                        </Link>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     <div>
                         <Button type="submit" className="w-full" isLoading={isLoading}>

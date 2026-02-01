@@ -6,6 +6,9 @@
   --color-brand-secondary: #004E89;
   --color-brand-accent: #F7B801;
 
+  /* Global Border Radius Token */
+  --radius-box: 0.75rem;
+
   /* Primary Palette Overrides (Orange based) */
   --color-primary-50: #fff4ed;
   --color-primary-100: #ffe6d5;

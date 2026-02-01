@@ -15,12 +15,14 @@ const CompanyLoginPage: React.FC = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [portalError, setPortalError] = useState<string | null>(null);
     const navigate = useNavigate();
     const { addToast } = useToast();
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);
+        setPortalError(null); // Clear previous portal errors
 
         try {
             const { data, error } = await supabase.auth.signInWithPassword({
@@ -31,13 +33,25 @@ const CompanyLoginPage: React.FC = () => {
             if (error) throw error;
 
             if (data.session) {
+                const metadataType = data.session.user.user_metadata.type as string;
+
+                if (metadataType !== 'company') {
+                    // Client user trying to login via company portal
+                    // Sign them out immediately to clear the session
+                    await supabase.auth.signOut();
+
+                    // Set portal error to trigger friendly UI message
+                    setPortalError('WRONG_PORTAL_TYPE');
+                    return;
+                }
+
+                // Valid company login
                 addToast('Login realizado com sucesso!', 'success');
 
                 // Force check for company profile
                 const { data: companyData } = await supabase
                     .from('companies')
                     .select('slug')
-                    .eq('profile_id', data.session.user.id)
                     .eq('profile_id', data.session.user.id)
                     .limit(1)
                     .maybeSingle();
@@ -52,7 +66,8 @@ const CompanyLoginPage: React.FC = () => {
         } catch (err: unknown) {
             const error = err as Error;
             console.error('Login error:', error);
-            addToast(error.message || 'Falha ao realizar login. Verifique suas credenciais.', 'error');
+            // Generic error message for security (prevents user enumeration)
+            addToast('Credenciais inválidas. Verifique seu e-mail e senha.', 'error');
         } finally {
             setIsLoading(false);
         }
@@ -75,7 +90,7 @@ const CompanyLoginPage: React.FC = () => {
                     </h2>
                     <p className="mt-2 text-center text-sm text-gray-600">
                         Ainda não cadastrou seu negócio?{' '}
-                        <Link to="/cadastro/empresa" className="font-medium text-brand-primary hover:text-brand-primary/80">
+                        <Link to="/empresa/cadastro" className="font-medium text-brand-primary hover:text-brand-primary/80">
                             Começar agora
                         </Link>
                     </p>
@@ -112,6 +127,32 @@ const CompanyLoginPage: React.FC = () => {
                             Esqueceu a senha?
                         </Link>
                     </div>
+
+                    {/* Portal Error Message */}
+                    {portalError === 'WRONG_PORTAL_TYPE' && (
+                        <div className="rounded-md bg-amber-50 border border-amber-200 p-4">
+                            <div className="flex">
+                                <div className="flex-shrink-0">
+                                    <svg className="h-5 w-5 text-amber-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                    </svg>
+                                </div>
+                                <div className="ml-3 flex-1">
+                                    <p className="text-sm font-medium text-amber-800">
+                                        Este login pertence a uma conta de cliente.
+                                    </p>
+                                    <div className="mt-3">
+                                        <Link
+                                            to="/login/cliente"
+                                            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-brand-primary hover:bg-brand-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-primary transition-colors"
+                                        >
+                                            Acessar Área de Clientes
+                                        </Link>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     <div>
                         <Button type="submit" className="w-full" isLoading={isLoading}>

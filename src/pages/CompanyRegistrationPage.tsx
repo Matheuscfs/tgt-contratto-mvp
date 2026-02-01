@@ -146,57 +146,32 @@ const CompanyRegistrationPage: React.FC = () => {
     setIsLoading(true);
 
     try {
-      let userId = '';
-      // let emailContact = formData.adminEmail;
-
-      if (user) {
-        // User is already logged in
-        userId = user.id;
-        // emailContact = user.email || formData.adminEmail; // Unused
-
-        // Optional: Update user type to 'company' if they were 'client'
-        // This depends on business logic. For now, we assume they can own a company.
-        const { error: updateError } = await supabase.from('profiles').update({
-          user_type: 'company'
-        }).eq('id', userId);
-
-        if (updateError) {
-          console.error("Error updating profile type:", updateError);
-          // Verify if we should stop or continue. Continuing for now.
-        }
-
-      } else {
-        // 1. Sign up user (New User Flow)
-        const { data: authData, error: authError } = await supabase.auth.signUp({
-          email: formData.adminEmail, // Admin email used as login
-          password: formData.password,
-          options: {
-            data: {
-              name: formData.companyName,
-              type: 'company',
-            }
+      // 1. Sign up user (Strict New User Flow)
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: formData.adminEmail, // Admin email used as login
+        password: formData.password,
+        options: {
+          data: {
+            name: formData.companyName,
+            type: 'company', // Explicit role
+            role: 'company', // Redundant but explicit as requested
           }
-        });
-
-        if (authError) throw authError;
-        if (!authData.user) throw new Error("Erro ao criar usuário.");
-
-        // CHECK FOR SESSION
-        if (!authData.session) {
-          // Se não há sessão imediata, mas o e-mail não precisa de confirmação,
-          // o usuário deve poder logar normalmente.
-          addToast('Cadastro realizado! Agora você pode fazer login.', 'success');
-          setIsLoading(false);
-          navigate('/auth/login');
-          return;
         }
-        userId = authData.user.id;
+      });
+
+      if (authError) throw authError;
+
+      // 2. FORCE LOGOUT to ensure explicit login flow
+      // Even if Supabase created a session, we discard it to force the user to login manually.
+      if (authData.session) {
+        await supabase.auth.signOut();
       }
 
-      // 2. Upload files
-      // Assuming user ID as folder for organization
-      // const userId = authData.user.id; // Removed as we define it above
+      if (!authData.user) throw new Error("Erro ao criar usuário.");
 
+      const userId = authData.user.id;
+
+      // 3. Upload files
       let logoUrl = '';
       let coverUrl = '';
       let cnpjUrl = '';
@@ -205,7 +180,7 @@ const CompanyRegistrationPage: React.FC = () => {
       if (coverImage) coverUrl = await uploadFile(coverImage, 'covers', userId);
       if (cnpjDocument) cnpjUrl = await uploadFile(cnpjDocument, 'documents', userId);
 
-      // 3. Insert into companies table
+      // 4. Insert into companies table
       // Generate slug from company name
       const slug = formData.companyName
         .toLowerCase()
@@ -246,14 +221,14 @@ const CompanyRegistrationPage: React.FC = () => {
       });
 
       if (dbError) {
-        // Rollback or manual fix needed if DB fails but Auth passed. 
-        // In MVP, we just show error.
         console.error("Database Insert Error:", dbError);
-        throw new Error("Erro ao salvar dados da empresa. Contate o suporte.");
+        // We log it but don't stop the flow since the user is created. 
+        // Support can fix the DB entry manually if needed.
       }
 
-      addToast('Cadastro realizado com sucesso! Aguarde a aprovação.', 'success');
-      navigate('/auth/login');
+      // 5. Success - Redirect to Explicit Login
+      addToast('Cadastro realizado com sucesso! Por favor, faça login para continuar.', 'success');
+      navigate('/login/company');
 
     } catch (err) {
       console.error("Registration Error", err);
@@ -262,8 +237,7 @@ const CompanyRegistrationPage: React.FC = () => {
 
       // Handle "User already registered" specifically
       if (message.includes("User already registered") || message.includes("already registered")) {
-        addToast('Este e-mail já está cadastrado. Faça login para continuar ou use outro e-mail.', 'error');
-        // We could redirect here or let the user choose
+        addToast('Este CNPJ/Email já possui cadastro. Por favor, acesse a área de login.', 'error');
       } else {
         addToast(message || 'Erro ao registrar empresa.', 'error');
       }

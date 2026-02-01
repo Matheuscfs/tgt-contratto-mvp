@@ -12,8 +12,6 @@ import MessageModal from '../components/MessageModal';
 import ServiceBookingModal from '../components/ServiceBookingModal';
 import ReviewModal from '../components/ReviewModal';
 import Badge from '../components/ui/Badge';
-// import StatsGrid from '../components/ui/StatsGrid'; // Unused
-import FAQSection from '../components/FAQSection';
 import CompanyCard from '../components/CompanyCard';
 import { Service } from '../types';
 import { supabase } from '../lib/supabase';
@@ -388,30 +386,6 @@ const CompanyProfilePage: React.FC = () => {
               )}
             </section>
 
-            {/* FAQ Section for GEO */}
-            <FAQSection
-              companyName={company.companyName}
-              faqs={[
-                {
-                  question: `Qual o horário de atendimento da ${company.companyName}?`,
-                  answer: `Entre em contato conosco pelo telefone ${company.phone || 'disponível no site'} para confirmar nossos horários de atendimento.`
-                },
-                {
-                  question: `A ${company.companyName} atende em ${company.address.city}?`,
-                  answer: `Sim! Estamos localizados em ${company.address.street}, ${company.address.number}, ${company.address.district}, ${company.address.city} - ${company.address.state}.`
-                },
-                {
-                  question: "Como posso solicitar um orçamento?",
-                  answer: "Você pode solicitar um orçamento gratuitamente clicando no botão 'Solicitar Orçamento Grátis' nesta página ou entrando em contato diretamente conosco."
-                },
-                {
-                  question: "Quais formas de pagamento são aceitas?",
-                  answer: "Entre em contato conosco para conhecer todas as formas de pagamento disponíveis e condições especiais."
-                }
-              ]}
-            />
-
-
             {/* Similar Companies Section */}
             {similarCompanies.length > 0 && (
               <section id="similares" className="mt-12 pt-12 border-t">
@@ -468,8 +442,22 @@ const CompanyProfilePage: React.FC = () => {
 
               <div className="bg-gray-50 p-6 rounded-lg border">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Localização</h3>
-                <div className="aspect-w-16 aspect-h-9 bg-gray-200 flex items-center justify-center rounded-md">
-                  <p className="text-gray-500">Mapa indisponível temporariamente.</p>
+                <div className="aspect-w-16 aspect-h-9 bg-gray-200 rounded-md overflow-hidden">
+                  {company.address ? (
+                    <iframe
+                      title="Localização da Empresa"
+                      width="100%"
+                      height="100%"
+                      style={{ border: 0 }}
+                      loading="lazy"
+                      allowFullScreen
+                      src={`https://maps.google.com/maps?q=${encodeURIComponent(`${company.address.street}, ${company.address.number} - ${company.address.city}, ${company.address.state}`)}&t=&z=15&ie=UTF8&iwloc=&output=embed`}
+                    ></iframe>
+                  ) : (
+                    <div className="flex items-center justify-center h-full">
+                      <p className="text-gray-500">Endereço não cadastrado.</p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

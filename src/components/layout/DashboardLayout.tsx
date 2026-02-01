@@ -31,7 +31,7 @@ const DashboardLayout: React.FC = () => {
   }
 
   if (!user || user.type !== 'company') {
-    return <Navigate to="/auth/login" replace />;
+    return <Navigate to="/login/company" replace />;
   }
 
   if (!company) {

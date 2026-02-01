@@ -46,10 +46,16 @@ const CompaniesListPage: React.FC = () => {
   };
 
   return (
-    <div className="bg-gray-50 min-h-screen">
+    <main className="bg-gray-50 min-h-screen">
       <Helmet>
         <title>{getDynamicTitle()}</title>
         <meta name="description" content={getDynamicDescription()} />
+        <link rel="canonical" href={window.location.origin + location.pathname} />
+        {/* Open Graph Tags */}
+        <meta property="og:title" content={getDynamicTitle()} />
+        <meta property="og:description" content={getDynamicDescription()} />
+        <meta property="og:url" content={window.location.origin + location.pathname} />
+        <meta property="og:type" content="website" />
       </Helmet>
 
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -73,7 +79,7 @@ const CompaniesListPage: React.FC = () => {
                 value={searchTerm}
                 onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
                 placeholder="Ex: Pedreiro, Adega..."
-                className="mt-1 block w-full bg-white border border-gray-300 rounded-xl shadow-sm py-3 px-4 focus:ring-primary-500 focus:border-primary-500"
+                className="mt-1 block w-full bg-white border border-gray-300 rounded-[var(--radius-box)] shadow-sm py-3 px-4 focus:ring-primary-500 focus:border-primary-500"
               />
             </div>
 
@@ -83,7 +89,7 @@ const CompaniesListPage: React.FC = () => {
                 id="category"
                 value={selectedCategory}
                 onChange={(e) => { setSelectedCategory(e.target.value); setCurrentPage(1); }}
-                className="mt-1 block w-full bg-white border border-gray-300 rounded-xl shadow-sm py-3 px-4 focus:ring-primary-500 focus:border-primary-500"
+                className="mt-1 block w-full bg-white border border-gray-300 rounded-[var(--radius-box)] shadow-sm py-3 px-4 focus:ring-primary-500 focus:border-primary-500"
               >
                 <option value="all">Todas</option>
                 {CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}
@@ -96,7 +102,7 @@ const CompaniesListPage: React.FC = () => {
                 id="price"
                 value={priceRange}
                 onChange={(e) => setPriceRangeValue(e.target.value as 'all' | 'low' | 'mid' | 'high')}
-                className="mt-1 block w-full bg-white border-none ring-1 ring-gray-100 rounded-xl shadow-md py-4 pl-4 pr-10 text-base focus:outline-none focus:ring-2 focus:ring-primary-500 focus:shadow-lg transition-all sm:text-sm min-h-[48px]"
+                className="mt-1 block w-full bg-white border-none ring-1 ring-gray-100 rounded-[var(--radius-box)] shadow-sm py-4 pl-4 pr-10 text-base focus:outline-none focus:ring-2 focus:ring-primary-500 focus:shadow-lg transition-all sm:text-sm min-h-[48px]"
               >
                 <option value="all">Todos os Preços</option>
                 <option value="low">Até R$ 100</option>
@@ -111,7 +117,7 @@ const CompaniesListPage: React.FC = () => {
                 id="sort"
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
-                className="mt-1 block w-full bg-white border border-gray-300 rounded-xl shadow-sm py-3 px-4 focus:ring-primary-500 focus:border-primary-500"
+                className="mt-1 block w-full bg-white border border-gray-300 rounded-[var(--radius-box)] shadow-sm py-3 px-4 focus:ring-primary-500 focus:border-primary-500"
               >
                 <option value="rating">Melhor Avaliação</option>
                 <option value="name">Nome (A-Z)</option>
@@ -129,7 +135,7 @@ const CompaniesListPage: React.FC = () => {
                   setCurrentPage(1);
                   setPriceRangeValue('all');
                 }}
-                className="w-full py-3 px-4 border border-gray-300 rounded-xl shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+                className="w-full py-3 px-4 border border-gray-300 rounded-[var(--radius-box)] shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
               >
                 Limpar Filtros
               </button>
@@ -145,7 +151,7 @@ const CompaniesListPage: React.FC = () => {
         </div>
 
         {/* Content */}
-        <div className="mt-6">
+        <section className="mt-6" aria-label="Lista de Empresas">
           {loading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {[1, 2, 3, 4].map((i) => (
@@ -163,7 +169,7 @@ const CompaniesListPage: React.FC = () => {
               <p className="text-gray-500 text-lg">Nenhum resultado encontrado.</p>
             </div>
           )}
-        </div>
+        </section>
 
         {/* Pagination */}
         {!loading && totalPages > 1 && (
@@ -189,7 +195,7 @@ const CompaniesListPage: React.FC = () => {
         )}
 
       </div>
-    </div>
+    </main>
   );
 };
 

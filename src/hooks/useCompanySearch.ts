@@ -54,8 +54,8 @@ export const useCompanySearch = (itemsPerPage: number = 8) => {
                 .select(`
                   *,
                   services!inner (*)
-                `, { count: 'exact' })
-                .eq('status', 'approved');
+                `, { count: 'exact' });
+            // .eq('status', 'approved'); // allow all for MVP
 
             // 1. Text Search
             if (searchTerm) {

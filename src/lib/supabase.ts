@@ -18,6 +18,9 @@ const getSupabase = () => {
         }
     }
 
+    const isDev = import.meta.env.DEV;
+    const isLocalIP = window.location.hostname.match(/^(192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[01])\.|127\.0\.0\.1|localhost)/);
+
     const client = createClient(
         supabaseUrl || '',
         supabaseAnonKey || '',
@@ -26,6 +29,7 @@ const getSupabase = () => {
                 persistSession: true,
                 autoRefreshToken: true,
                 detectSessionInUrl: true,
+                storageKey: 'tgt-auth-session',
             },
         }
     );

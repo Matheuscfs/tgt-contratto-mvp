@@ -83,18 +83,11 @@ const MainRoutes = () => {
 
         {/* Auth Routes - Companies */}
         <Route path="/login/empresa" element={<AnimatedElement><CompanyLoginPage /></AnimatedElement>} />
-        <Route path="/cadastro/empresa" element={<AnimatedElement><CompanyRegisterPage /></AnimatedElement>} />
-
-        {/* Legacy redirects */}
-        <Route path="/auth/login" element={<Navigate to="/login/cliente" replace />} />
-        <Route path="/auth/register" element={<Navigate to="/cadastro/cliente" replace />} />
-        <Route path="/client/dashboard" element={<Navigate to="/perfil/cliente" replace />} />
-        <Route path="/professional/dashboard" element={<Navigate to="/login/empresa" replace />} />
-
-        {/* Common Auth */}
-        <Route path="/auth/forgot-password" element={<AnimatedElement><Suspense fallback={<LoadingSpinner />}><ForgotPasswordPage /></Suspense></AnimatedElement>} />
-        <Route path="/auth/reset-password" element={<AnimatedElement><Suspense fallback={<LoadingSpinner />}><ResetPasswordPage /></Suspense></AnimatedElement>} />
+        <Route path="/login/company" element={<AnimatedElement><CompanyLoginPage /></AnimatedElement>} /> {/* Explicit Login Route */}
         <Route path="/empresa/cadastro" element={<AnimatedElement><CompanyRegistrationPage /></AnimatedElement>} />
+
+        {/* Redirect old company registration route to canonical path */}
+        <Route path="/cadastro/empresa" element={<Navigate to="/empresa/cadastro" replace />} />
         <Route path="/agendamento/confirmacao" element={<AnimatedElement><BookingConfirmationPage /></AnimatedElement>} />
 
         {/* Client Routes */}

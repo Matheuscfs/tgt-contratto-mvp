@@ -34,8 +34,8 @@ const CompanyCard: React.FC<CompanyCardProps> = ({ company }) => {
     };
 
     return (
-        <div className="group relative">
-            <Link to={`/empresa/${company.slug}`} className="block bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 ring-1 ring-gray-100 hover:ring-brand-primary">
+        <article className="group relative">
+            <Link to={`/empresa/${company.slug}`} className="block bg-white rounded-[var(--radius-box)] shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 ring-1 ring-gray-100 hover:ring-brand-primary">
                 <div className="relative w-full h-48 bg-gray-200">
                     <OptimizedImage src={company.coverImage} alt={company.companyName} className="w-full h-full object-cover" />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
@@ -98,7 +98,7 @@ const CompanyCard: React.FC<CompanyCardProps> = ({ company }) => {
                     <HeartIcon favorited={favorited} />
                 </button>
             )}
-        </div>
+        </article>
     );
 };
 

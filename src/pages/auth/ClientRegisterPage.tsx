@@ -144,7 +144,7 @@ const ClientRegisterPage: React.FC = () => {
                 <div className="mt-4 text-center">
                     <p className="text-sm text-gray-600">
                         É uma empresa?{' '}
-                        <Link to="/cadastro/empresa" className="font-medium text-brand-primary hover:text-brand-primary/80">
+                        <Link to="/empresa/cadastro" className="font-medium text-brand-primary hover:text-brand-primary/80">
                             Cadastre-se como Profissional
                         </Link>
                     </p>
