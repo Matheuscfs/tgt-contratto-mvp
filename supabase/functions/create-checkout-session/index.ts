@@ -34,26 +34,21 @@ serve(async (req) => {
             throw new Error('Service not found')
         }
 
-        // 2. Determine price based on tier
+        // 2. Determine price based on tier (Source of Truth)
         let price = 0
         let title = service.title
-        let description = ''
 
-        // Parse packages JSONB if it exists, otherwise use base price
         // Type definition from project: packages: { basic: { price: number }, ... }
         const packages = service.packages as any
 
         if (packages && packages[package_tier]) {
             price = packages[package_tier].price
-            description = packages[package_tier].description || `${package_tier} package`
         } else {
-            // Fallback or Error if tier invalid
-            // For MVP, if package structure missing, maybe rely on base price?
-            // But requirements say 'create-checkout-session' receives tier.
+            // Fallback for basic tier if packages structure is missing but base price exists
             if (package_tier === 'basic' && service.price) {
                 price = service.price
             } else {
-                // If we can't find the price, we must fail secure.
+                console.error(`Price not found for tier: ${package_tier} in service: ${service_id}`)
                 throw new Error('Invalid package tier or price not found')
             }
         }
@@ -61,9 +56,7 @@ serve(async (req) => {
         console.log(`Creating session for: ${title} (${package_tier}) - Price: ${price}`)
 
         // 3. Create Checkout Session (Mock/Stripe/Asaas)
-        // For MVP Sprint 1, we will simulate a session creation returning a "payment link"
-        // In production, calling Stripe API here.
-
+        // For MVP Sprint 1, we simulate session creation
         const sessionData = {
             sessionId: `sess_${crypto.randomUUID()}`,
             paymentUrl: `https://mock-payment-provider.com/pay?id=${crypto.randomUUID()}&amount=${price}`,
@@ -72,8 +65,8 @@ serve(async (req) => {
             metadata: {
                 service_id,
                 package_tier,
-                buyer_id: user_id, // passed from client? Better to verify auth token.
-                // In real app, we get user from Authorization header
+                buyer_id: user_id,
+                price: price // Store agreed price in metadata to pass to webhook
             }
         }
 
@@ -87,6 +80,7 @@ serve(async (req) => {
         )
 
     } catch (error) {
+        console.error('Checkout Session Error:', error)
         return new Response(
             JSON.stringify({ error: error.message }),
             {

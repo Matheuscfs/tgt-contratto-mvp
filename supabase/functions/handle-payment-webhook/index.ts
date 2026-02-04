@@ -29,74 +29,49 @@ serve(async (req) => {
         }
 
         // 2. Extract Data
-        // Expecting data to contain metadata we sent in checkout session
-        const { metadata, transaction_id } = data
+        const { metadata } = data
         const { service_id, package_tier, buyer_id, price } = metadata
 
         if (!service_id || !buyer_id || !price) {
-            throw new Error('Invalid metadata')
+            throw new Error('Invalid metadata: Missing required fields')
         }
 
         // 3. Fetch Service to Snapshot details
-        // We fetch again to ensure fresh data for snapshot, or we could have passed it in metadata if it fits.
-        // Fetching is safer.
         const { data: service, error: serviceError } = await supabaseClient
             .from('services')
-            .select('*, companies(id, company_name)')
+            .select('*, companies(id, owner_id)') // Fetch owner_id directly from companies
             .eq('id', service_id)
             .single()
 
-        if (serviceError || !service) throw new Error('Service not found for snapshot')
-
-        const seller_id = service.company_id // Wait, services link to companies? Yes.
-        // Need to find owner of company to set as seller_id? 
-        // In orders table: "seller_id UUID REFERENCES profiles(id)".
-        // The service belongs to a company. The company has an owner.
-        // We need to fetch the company owner.
-
-        const { data: company, error: companyError } = await supabaseClient
-            .from('companies')
-            .select('owner_id')
-            .eq('id', service.company_id)
-            .single()
-
-        // If company schema puts owner_id in companies table. 
-        // Let's assume yes based on typical schema, but need to be careful.
-        // Looking at 'types.ts', Company has 'owner?: { id: string ... }'.
-        // In DB it's likely 'owner_id' column on companies table or a join.
-        // I'll assume 'owner_id' column exists on companies. If not, I'll need to fix.
-        // Actually, let's verify schema if possible. But for now I'll write defensive code.
-
-        let real_seller_id = null
-        if (company && company.owner_id) {
-            real_seller_id = company.owner_id
-        } else {
-            // Fallback: maybe the service.company_id IS the profile id? 
-            // Unlikely. Logic: Company -> Owner (Profile).
-            // If I can't find the owner, I might fail or put a placeholder?
-            // I'll try to find the owner.
+        if (serviceError || !service) {
+            console.error('Service fetch error:', serviceError)
+            throw new Error('Service not found for snapshot')
         }
 
-        if (!real_seller_id) {
-            // Check if I can find via other means or if the company_id is actually a profile_id
-            // For now, I'll assume fetching 'owner_id' from companies worked.
-            // If this fails during runtime, I'll see error log.
-            // Wait, I should check schema. I'll do that in verification.
-            // For now, assume companies.owner_id exists.
+        const seller_id = service.companies?.owner_id
+
+        if (!seller_id) {
+            console.error('Seller ID not found for company:', service.companies?.id)
+            // Fallback or critical error? For MVP we must have a seller.
+            // If company has no owner, we have a data integrity issue.
+            throw new Error('Seller not found for this service')
         }
 
-        // 4. Insert Order
+        // 4. Insert Order Securely
         const { data: order, error: insertError } = await supabaseClient
             .from('orders')
             .insert({
                 buyer_id,
-                seller_id: real_seller_id,
+                seller_id: seller_id,
                 service_id,
                 service_title: service.title,
                 package_tier,
-                price: price,
-                status: 'paid', // Initial paid status
-                package_snapshot: service // Full snapshot
+                price: price, // Total transaction value
+                agreed_price: price, // Securely recorded agreed price
+                status: 'paid', // Order starts as paid because this is a payment webhook
+                package_snapshot: service.packages, // Snapshot specific package info or whole service? 
+                // Requirement says "cópia do JSONB do pacote contratado"
+                // service.packages is the JSONB field.
             })
             .select()
             .single()
