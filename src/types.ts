@@ -74,7 +74,7 @@ export interface Company {
   rating: number;
   reviewCount: number;
   description: string;
-  level?: 'Beginner' | 'Level 1' | 'Level 2' | 'Pro';
+  level?: 'Iniciante' | 'Nível 1' | 'Pro';
   address: Address;
   phone?: string;
   email: string;
@@ -163,7 +163,7 @@ export interface DbCompany {
   review_count?: number;
   status?: string;
   verified?: boolean;
-  level?: 'Beginner' | 'Level 1' | 'Level 2' | 'Pro';
+  level?: 'Iniciante' | 'Nível 1' | 'Pro';
 }
 
 export interface Service {
@@ -340,4 +340,14 @@ export interface Conversation {
   date: string;
   unread: boolean;
   name: string;
+}
+
+export interface SellerStats {
+  seller_id: string;
+  total_completed_orders: number;
+  average_rating: number;
+  on_time_delivery_rate: number;
+  current_level: 'Beginner' | 'Level 1' | 'Level 2' | 'Pro';
+  next_level: 'Level 1' | 'Level 2' | 'Pro' | null;
+  orders_to_next_level: number;
 }

@@ -1,17 +1,19 @@
 import React, { useState } from 'react';
 import SEO from '../components/SEO';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import SocialButton from '../components/ui/SocialButton';
 import Input from '../components/ui/Input';
 import Button from '../components/ui/Button';
 import FileUpload from '../components/FileUpload';
 import { useToast } from '../contexts/ToastContext';
-import { useAuth } from '../contexts/AuthContext'; // Import useAuth
+import { useAuth } from '../contexts/AuthContext';
 import { validateCNPJ, validateCPF } from '../utils/validators';
 import { CATEGORIES } from '../constants';
 import { supabase } from '../lib/supabase';
+import { Store, Briefcase, ChevronRight, Check } from 'lucide-react';
 
 const CompanyRegistrationPage: React.FC = () => {
-  const { user } = useAuth(); // Get current user
+  const { user } = useAuth();
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
     companyName: '',
@@ -31,7 +33,7 @@ const CompanyRegistrationPage: React.FC = () => {
     adminName: '',
     adminCpf: '',
     adminEmail: '',
-    password: '', // Added password field for auth
+    password: '',
     confirmPassword: '',
   });
   const [logo, setLogo] = useState<File | null>(null);
@@ -92,6 +94,7 @@ const CompanyRegistrationPage: React.FC = () => {
   const handleNext = () => {
     if (step === 1 && validateStep1()) setStep(2);
     if (step === 2 && validateStep2()) setStep(3);
+    window.scrollTo(0, 0);
   };
 
   const handleBack = () => setStep(prev => prev - 1);
@@ -147,23 +150,20 @@ const CompanyRegistrationPage: React.FC = () => {
     setIsLoading(true);
 
     try {
-      // 1. Sign up user (Strict New User Flow)
       const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: formData.adminEmail, // Admin email used as login
+        email: formData.adminEmail,
         password: formData.password,
         options: {
           data: {
             name: formData.companyName,
-            type: 'company', // Explicit role
-            role: 'company', // Redundant but explicit as requested
+            type: 'company',
+            role: 'company',
           }
         }
       });
 
       if (authError) throw authError;
 
-      // 2. FORCE LOGOUT to ensure explicit login flow
-      // Even if Supabase created a session, we discard it to force the user to login manually.
       if (authData.session) {
         await supabase.auth.signOut();
       }
@@ -172,7 +172,6 @@ const CompanyRegistrationPage: React.FC = () => {
 
       const userId = authData.user.id;
 
-      // 3. Upload files
       let logoUrl = '';
       let coverUrl = '';
       let cnpjUrl = '';
@@ -181,15 +180,13 @@ const CompanyRegistrationPage: React.FC = () => {
       if (coverImage) coverUrl = await uploadFile(coverImage, 'covers', userId);
       if (cnpjDocument) cnpjUrl = await uploadFile(cnpjDocument, 'documents', userId);
 
-      // 4. Insert into companies table
-      // Generate slug from company name
       const slug = formData.companyName
         .toLowerCase()
-        .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // Remove accents
-        .replace(/[^a-z0-9\s-]/g, '') // Remove special chars
-        .replace(/\s+/g, '-') // Replace spaces with hyphens
-        .replace(/-+/g, '-') // Replace multiple hyphens with single
-        .replace(/^-+|-+$/g, ''); // Trim hyphens
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9\s-]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-+|-+$/g, '');
 
       const { error: dbError } = await supabase.from('companies').insert({
         profile_id: userId,
@@ -197,7 +194,7 @@ const CompanyRegistrationPage: React.FC = () => {
         company_name: formData.companyName,
         legal_name: formData.legalName,
         cnpj: formData.cnpj,
-        email: formData.email, // Public contact email
+        email: formData.email,
         phone: formData.phone,
         website: formData.website,
         category: formData.category,
@@ -223,20 +220,14 @@ const CompanyRegistrationPage: React.FC = () => {
 
       if (dbError) {
         console.error("Database Insert Error:", dbError);
-        // We log it but don't stop the flow since the user is created. 
-        // Support can fix the DB entry manually if needed.
       }
 
-      // 5. Success - Redirect to Explicit Login
       addToast('Cadastro realizado com sucesso! Por favor, faça login para continuar.', 'success');
       navigate('/login/company');
 
     } catch (err) {
       console.error("Registration Error", err);
-
       const message = err instanceof Error ? err.message : "";
-
-      // Handle "User already registered" specifically
       if (message.includes("User already registered") || message.includes("already registered")) {
         addToast('Este CNPJ/Email já possui cadastro. Por favor, acesse a área de login.', 'error');
       } else {
@@ -248,117 +239,258 @@ const CompanyRegistrationPage: React.FC = () => {
   };
 
   return (
-    <div className="container mx-auto max-w-4xl py-12 px-4">
+    <div className="min-h-screen relative bg-gray-50 overflow-hidden">
       <SEO
         title="Cadastro de Empresa | TGT Contratto"
         description="Cadastre sua empresa no TGT Contratto e encontre novos clientes na sua região."
       />
-      <div className="bg-white p-8 rounded-lg shadow-lg">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Cadastre sua Empresa</h1>
-        <p className="text-gray-600 mb-8">Siga os passos para criar o perfil do seu negócio.</p>
 
-        {/* Stepper */}
-        <div className="mb-8">
-          <ol className="flex items-center w-full">
-            <li className={`flex w-full items-center ${step >= 1 ? 'text-primary-600' : 'text-gray-500'} after:content-[''] after:w-full after:h-1 after:border-b ${step > 1 ? 'after:border-primary-600' : 'after:border-gray-200'} after:border-4 after:inline-block`}>
-              <span className="flex items-center justify-center w-10 h-10 bg-gray-100 rounded-full lg:h-12 lg:w-12 shrink-0">1</span>
-            </li>
-            <li className={`flex w-full items-center ${step >= 2 ? 'text-primary-600' : 'text-gray-500'} after:content-[''] after:w-full after:h-1 after:border-b ${step > 2 ? 'after:border-primary-600' : 'after:border-gray-200'} after:border-4 after:inline-block`}>
-              <span className="flex items-center justify-center w-10 h-10 bg-gray-100 rounded-full lg:h-12 lg:w-12 shrink-0">2</span>
-            </li>
-            <li className={`flex items-center ${step >= 3 ? 'text-primary-600' : 'text-gray-500'}`}>
-              <span className="flex items-center justify-center w-10 h-10 bg-gray-100 rounded-full lg:h-12 lg:w-12 shrink-0">3</span>
-            </li>
-          </ol>
+      {/* Background Split */}
+      <div className="absolute top-0 w-full h-[40vh] bg-[#004E89] rounded-b-[50px] z-0">
+        <div className="absolute inset-0 bg-gradient-to-br from-[#004E89] to-[#003B66]" />
+        <div className="absolute inset-0 opacity-10"
+          style={{
+            backgroundImage: "url('data:image/svg+xml,%3Csvg width=\"60\" height=\"60\" viewBox=\"0 0 60 60\" xmlns=\"http://www.w3.org/2000/svg\"%3E%3Cg fill=\"none\" fill-rule=\"evenodd\"%3E%3Cg fill=\"%23ffffff\" fill-opacity=\"1\"%3E%3Cpath d=\"M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')"
+          }}
+        />
+      </div>
+
+      <div className="relative z-10 min-h-screen flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8">
+        <div className="text-center mb-8">
+          <h2 className="text-3xl font-bold text-white tracking-tight">
+            Destaque sua Empresa
+          </h2>
+          <p className="mt-2 text-blue-100">
+            Milhares de clientes esperam por profissionais como você.
+          </p>
         </div>
 
+        <div className="mx-auto w-full max-w-4xl">
+          <div className="bg-white rounded-2xl shadow-xl p-8 sm:p-10 border border-gray-100">
 
-        <form onSubmit={(e) => e.preventDefault()}>
-          {step === 1 && (
-            <div className="space-y-6">
-              {/* ... fields ... */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Input label="Nome Fantasia" name="companyName" value={formData.companyName} onChange={handleChange} error={errors.companyName} required />
-                <Input label="Razão Social" name="legalName" value={formData.legalName} onChange={handleChange} error={errors.legalName} required />
-                <Input label="CNPJ" name="cnpj" placeholder="CNPJ (somente números ou formatado)" value={formData.cnpj} onChange={handleChange} error={errors.cnpj} required />
-                <Input label="Email de Contato Público" name="email" type="email" value={formData.email} onChange={handleChange} error={errors.email} required />
-                <Input label="Telefone (Opcional)" name="phone" type="tel" value={formData.phone} onChange={handleChange} error={errors.phone} />
-                <Input label="Website (Opcional)" name="website" value={formData.website} onChange={handleChange} error={errors.website} />
+            {/* Account Type Toggle */}
+            <div className="max-w-md mx-auto mb-8">
+              <div className="bg-gray-100 p-1 rounded-xl flex">
+                <Link
+                  to="/cadastro/cliente"
+                  className="flex-1 flex items-center justify-center py-2 px-4 text-sm font-medium rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-50 transition-all"
+                >
+                  <Store className="w-4 h-4 mr-2" />
+                  Cliente
+                </Link>
+                <button
+                  className="flex-1 flex items-center justify-center py-2 px-4 text-sm font-medium rounded-lg bg-white text-gray-900 shadow-sm transition-all"
+                >
+                  <Briefcase className="w-4 h-4 mr-2 text-brand-primary" />
+                  Empresa
+                </button>
               </div>
-              <div>
-                <label htmlFor="category" className="block text-sm font-medium text-gray-700">Categoria</label>
-                <select id="category" name="category" value={formData.category} onChange={handleChange} className={`mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-md ${errors.category ? 'border-red-500' : ''}`}>
-                  <option value="">Selecione uma categoria</option>
-                  {CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}
-                </select>
-                {errors.category && <p className="mt-2 text-sm text-red-600">{errors.category}</p>}
-              </div>
-              <div>
-                <label htmlFor="description" className="block text-sm font-medium text-gray-700">Descrição</label>
-                <textarea id="description" name="description" rows={3} value={formData.description} onChange={handleChange} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm sm:text-sm p-2 focus:ring-primary-500 focus:border-primary-500"></textarea>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label htmlFor="logo-upload" className="block text-sm font-medium text-gray-700">Logo</label>
-                  <FileUpload id="logo-upload" accept="image/jpeg,image/png" maxSizeMb={5} onFileChange={handleFileChange(setLogo, 'logo')} />
-                  {errors.logo && <p className="mt-2 text-sm text-red-600">{errors.logo}</p>}
+
+              <div className="mt-8 text-center">
+                <p className="text-sm text-gray-500 mb-4">Cadastre-se com</p>
+                <div className="flex justify-center gap-4">
+                  <SocialButton
+                    provider="facebook"
+                    mode="icon"
+                    onClick={() => addToast('Login com Facebook em breve!', 'info')}
+                    title="Facebook"
+                  />
+                  <SocialButton
+                    provider="apple"
+                    mode="icon"
+                    onClick={() => addToast('Login com Apple em breve!', 'info')}
+                    title="Apple"
+                  />
+                  <SocialButton
+                    provider="google"
+                    mode="icon"
+                    onClick={() => addToast('Login com Google em breve!', 'info')}
+                    title="Google"
+                  />
                 </div>
-                <div>
-                  <label htmlFor="cover-upload" className="block text-sm font-medium text-gray-700">Imagem de Capa</label>
-                  <FileUpload id="cover-upload" accept="image/jpeg,image/png" maxSizeMb={10} onFileChange={handleFileChange(setCoverImage, 'coverImage')} />
-                  {errors.coverImage && <p className="mt-2 text-sm text-red-600">{errors.coverImage}</p>}
+                <div className="relative mt-6">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-gray-200"></div>
+                  </div>
+                  <div className="relative flex justify-center text-sm">
+                    <span className="px-2 bg-white text-gray-500">ou com e-mail</span>
+                  </div>
                 </div>
               </div>
-              <div>
-                <label htmlFor="cnpj-upload" className="block text-sm font-medium text-gray-700">Comprovante de CNPJ</label>
-                <FileUpload id="cnpj-upload" accept="application/pdf,image/jpeg,image/png" maxSizeMb={10} onFileChange={handleFileChange(setCnpjDocument, 'cnpjDocument')} />
-                {errors.cnpjDocument && <p className="mt-2 text-sm text-red-600">{errors.cnpjDocument}</p>}
+            </div>
+
+            <div className="mb-10">
+              {/* Custom Stepper */}
+              <div className="flex items-center justify-center">
+                <div className="flex items-center w-full max-w-xs relative">
+                  <div className="absolute left-0 top-1/2 w-full h-1 bg-gray-200 -z-10 rounded"></div>
+                  <div
+                    className="absolute left-0 top-1/2 h-1 bg-brand-primary -z-10 rounded transition-all duration-300"
+                    style={{ width: `${((step - 1) / 2) * 100}%` }}
+                  />
+
+                  <div className="flex justify-between w-full">
+                    {/* Step 1 */}
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-colors ${step >= 1 ? 'bg-brand-primary text-white ring-4 ring-brand-primary/20' : 'bg-gray-200 text-gray-500'}`}>
+                      {step > 1 ? <Check className="w-5 h-5" /> : '1'}
+                    </div>
+                    {/* Step 2 */}
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-colors ${step >= 2 ? 'bg-brand-primary text-white ring-4 ring-brand-primary/20' : 'bg-gray-200 text-gray-500'}`}>
+                      {step > 2 ? <Check className="w-5 h-5" /> : '2'}
+                    </div>
+                    {/* Step 3 */}
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-colors ${step >= 3 ? 'bg-brand-primary text-white ring-4 ring-brand-primary/20' : 'bg-gray-200 text-gray-500'}`}>
+                      3
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="flex justify-between w-full max-w-xs mx-auto mt-2 text-xs font-medium text-gray-500">
+                <span>Dados Gerais</span>
+                <span>Endereço</span>
+                <span>Acesso</span>
               </div>
             </div>
-          )}
 
-          {step === 2 && (
-            <div className="space-y-6">
-              <h2 className="text-xl font-semibold">2. Endereço</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Input label="CEP" name="cep" value={formData.cep} onChange={handleChange} onBlur={handleCepBlur} error={errors.cep} required />
-                <Input label="Rua" name="street" value={formData.street} onChange={handleChange} error={errors.street} required />
-                <Input label="Número" name="number" value={formData.number} onChange={handleChange} error={errors.number} />
-                <Input label="Bairro" name="district" value={formData.district} onChange={handleChange} error={errors.district} />
-                <Input label="Cidade" name="city" value={formData.city} onChange={handleChange} error={errors.city} required />
-                <Input label="Estado" name="state" value={formData.state} onChange={handleChange} error={errors.state} required />
+            <form onSubmit={(e) => e.preventDefault()}>
+              {step === 1 && (
+                <div className="space-y-6 animate-in fade-in slide-in-from-right duration-500">
+                  <h3 className="text-xl font-bold text-gray-800 border-l-4 border-brand-primary pl-3">Dados da Empresa</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <Input label="Nome Fantasia" name="companyName" placeholder="Ex: TGT Soluções" value={formData.companyName} onChange={handleChange} error={errors.companyName} required />
+                    <Input label="Razão Social" name="legalName" placeholder="Razão social completa" value={formData.legalName} onChange={handleChange} error={errors.legalName} required />
+                    <Input label="CNPJ" name="cnpj" placeholder="00.000.000/0000-00" value={formData.cnpj} onChange={handleChange} error={errors.cnpj} required />
+                    <Input label="Email Público" name="email" type="email" placeholder="contato@empresa.com" value={formData.email} onChange={handleChange} error={errors.email} required />
+                    <Input label="Telefone" name="phone" type="tel" placeholder="(00) 00000-0000" value={formData.phone} onChange={handleChange} error={errors.phone} />
+                    <Input label="Website" name="website" placeholder="www.suaempresa.com.br" value={formData.website} onChange={handleChange} error={errors.website} />
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
+                      <select
+                        id="category"
+                        name="category"
+                        value={formData.category}
+                        onChange={handleChange}
+                        className={`appearance-none block w-full px-3 py-2 border border-gray-200 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary sm:text-sm ${errors.category ? 'border-red-500' : ''}`}
+                      >
+                        <option value="">Selecione uma categoria</option>
+                        {CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                      </select>
+                      {errors.category && <p className="mt-1 text-xs text-red-500">{errors.category}</p>}
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Uploads</label>
+                      <div className="text-xs text-gray-500">Prepare seu logo e capa para o próximo passo.</div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">Breve Descrição</label>
+                    <textarea
+                      id="description"
+                      name="description"
+                      rows={3}
+                      placeholder="Descreva seus serviços e diferenciais..."
+                      value={formData.description}
+                      onChange={handleChange}
+                      className="appearance-none block w-full px-3 py-2 border border-gray-200 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary sm:text-sm"
+                    ></textarea>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Logo</label>
+                      <FileUpload id="logo-upload" accept="image/jpeg,image/png" maxSizeMb={5} onFileChange={handleFileChange(setLogo, 'logo')} />
+                      {errors.logo && <p className="mt-1 text-xs text-red-500">{errors.logo}</p>}
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Imagem de Capa</label>
+                      <FileUpload id="cover-upload" accept="image/jpeg,image/png" maxSizeMb={10} onFileChange={handleFileChange(setCoverImage, 'coverImage')} />
+                      {errors.coverImage && <p className="mt-1 text-xs text-red-500">{errors.coverImage}</p>}
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Doc. CNPJ (PDF/Img)</label>
+                      <FileUpload id="cnpj-upload" accept="application/pdf,image/jpeg,image/png" maxSizeMb={10} onFileChange={handleFileChange(setCnpjDocument, 'cnpjDocument')} />
+                      {errors.cnpjDocument && <p className="mt-1 text-xs text-red-500">{errors.cnpjDocument}</p>}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {step === 2 && (
+                <div className="space-y-6 animate-in fade-in slide-in-from-right duration-500">
+                  <h3 className="text-xl font-bold text-gray-800 border-l-4 border-brand-primary pl-3">Endereço Comercial</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <Input label="CEP" name="cep" placeholder="00000-000" value={formData.cep} onChange={handleChange} onBlur={handleCepBlur} error={errors.cep} required />
+                    <Input label="Rua" name="street" value={formData.street} onChange={handleChange} error={errors.street} required />
+                    <Input label="Número" name="number" value={formData.number} onChange={handleChange} error={errors.number} />
+                    <Input label="Bairro" name="district" value={formData.district} onChange={handleChange} error={errors.district} />
+                    <Input label="Cidade" name="city" value={formData.city} onChange={handleChange} error={errors.city} required />
+                    <Input label="Estado" name="state" value={formData.state} onChange={handleChange} error={errors.state} required />
+                  </div>
+                </div>
+              )}
+
+              {step === 3 && (
+                <div className="space-y-6 animate-in fade-in slide-in-from-right duration-500">
+                  <h3 className="text-xl font-bold text-gray-800 border-l-4 border-brand-primary pl-3">Administrador da Conta</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <Input label="Nome do Responsável" name="adminName" placeholder="Nome completo" value={formData.adminName} onChange={handleChange} error={errors.adminName} required />
+                    <Input label="CPF do Responsável" name="adminCpf" placeholder="000.000.000-00" value={formData.adminCpf} onChange={handleChange} error={errors.adminCpf} required />
+                    <div className="md:col-span-2">
+                      <Input label="Email de Login (Admin)" name="adminEmail" type="email" placeholder="Seu email de acesso" value={formData.adminEmail} onChange={handleChange} error={errors.adminEmail} required />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <Input label="Senha" name="password" type="password" placeholder="Mínimo 6 caracteres" value={formData.password} onChange={handleChange} error={errors.password} required />
+                    <Input label="Confirmar Senha" name="confirmPassword" type="password" placeholder="Repita a senha" value={formData.confirmPassword} onChange={handleChange} error={errors.confirmPassword} required />
+                  </div>
+
+                  <div className="flex items-center text-xs text-gray-500 bg-gray-50 p-3 rounded-lg mt-4">
+                    <svg className="w-5 h-5 mr-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    </svg>
+                    <div>
+                      <p className="font-semibold text-gray-700">Segurança Garantida</p>
+                      <p>Seus dados são criptografados e armazenados com segurança.</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="mt-8 flex justify-between items-center border-t border-gray-100 pt-6">
+                {step > 1 ? (
+                  <Button type="button" variant="outline" onClick={handleBack}>
+                    Voltar
+                  </Button>
+                ) : (
+                  <div />
+                )}
+
+                {step < 3 ? (
+                  <Button type="button" onClick={handleNext} className="flex items-center">
+                    Próximo Passo <ChevronRight className="w-4 h-4 ml-1" />
+                  </Button>
+                ) : (
+                  <Button type="button" onClick={(e) => handleSubmit(e)} isLoading={isLoading} size="lg" className="px-8">
+                    Finalizar Cadastro
+                  </Button>
+                )}
               </div>
+            </form>
+
+            <div className="mt-8 text-center">
+              <p className="text-sm text-gray-600">
+                Já tem cadastro?{' '}
+                <Link to="/login/empresa" className="font-bold text-brand-primary hover:text-brand-primary/80">
+                  Acessar Minha Conta
+                </Link>
+              </p>
             </div>
-          )}
 
-          {step === 3 && (
-            <div className="space-y-6">
-              <h2 className="text-xl font-semibold">3. Administrador Responsável</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Input label="Nome do Responsável" name="adminName" value={formData.adminName} onChange={handleChange} error={errors.adminName} required />
-                <Input label="CPF do Responsável" name="adminCpf" value={formData.adminCpf} onChange={handleChange} error={errors.adminCpf} required />
-                <Input label="Email de Login (Admin)" name="adminEmail" type="email" value={formData.adminEmail} onChange={handleChange} error={errors.adminEmail} required />
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Input label="Senha" name="password" type="password" value={formData.password} onChange={handleChange} error={errors.password} required />
-                <Input label="Confirmar Senha" name="confirmPassword" type="password" value={formData.confirmPassword} onChange={handleChange} error={errors.confirmPassword} required />
-              </div>
-              <div className="flex items-center text-sm text-gray-500 mt-4">
-                <svg className="w-5 h-5 mr-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                </svg>
-                As informações da sua empresa estão protegidas pela criptografia do Supabase.
-              </div>
-            </div>
-          )}
-
-          <div className="mt-8 flex justify-between">
-            {step > 1 && <Button type="button" variant="secondary" onClick={handleBack}>Voltar</Button>}
-            <div />
-            {step < 3 && <Button type="button" onClick={handleNext}>Próximo</Button>}
-            {step === 3 && <Button type="button" onClick={(e) => handleSubmit(e)} isLoading={isLoading}>Finalizar Cadastro</Button>}
           </div>
-        </form>
+        </div>
       </div>
     </div>
   );

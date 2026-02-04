@@ -83,101 +83,7 @@ const StepOverview = ({ data, updateData, errors }: any) => {
 /* ... StepPricing ... */
 /* ... StepGallery ...) */
 
-const ServiceWizard = ({ onCancel }: { onCancel?: () => void }) => {
-    const { user } = useAuth();
-    const { addToast } = useToast();
-    const navigate = useNavigate();
-    const [currentStep, setCurrentStep] = useState(0);
-    const [loading, setLoading] = useState(false);
-    const [errors, setErrors] = useState<any>({});
-    const [formData, setFormData] = useState({
-        title: '',
-        category: '',
-        description: '',
-        tags: '',
-        packages: {} as ServicePackages,
-        gallery: [] as string[]
-    });
 
-    // ... steps definition ...
-
-    /* ... calculateStartingPrice ... */
-
-    /* ... handleSubmit ... */
-
-    const validateStep = (step: number) => {
-        const newErrors: any = {};
-        let isValid = true;
-
-        if (step === 0) {
-            if (!formData.title.trim()) {
-                newErrors.title = true;
-                isValid = false;
-            }
-            if (!formData.category) {
-                newErrors.category = true;
-                isValid = false;
-            }
-        }
-
-        // Add pricing validation if needed
-        if (step === 1) {
-            const hasPrice = Object.values(formData.packages || {}).some((p: any) => p.price > 0);
-            if (!hasPrice) {
-                addToast("Defina o preço de pelo menos um pacote.", "error");
-                // Not using aggressive shake here for table, just toast
-                isValid = false;
-            }
-        }
-
-        setErrors(newErrors);
-        return isValid;
-    };
-
-
-    const handleNext = () => {
-        if (!validateStep(currentStep)) {
-            // Trigger visual feedback (Aggressive Shake is handled by Framer Motion via errors state)
-            return;
-        }
-
-        if (currentStep < steps.length - 1) {
-            setCurrentStep(curr => curr + 1);
-            setErrors({}); // Clear errors on next step
-        } else {
-            handleSubmit();
-        }
-    };
-
-    /* ... handleBack ... */
-
-    /* ... updateData ... */
-
-    // ...
-
-    return (
-        /* ... wrapper ... */
-        /* ... header ... */
-
-        {/* Content */ }
-        < div className = "p-8 min-h-[400px]" >
-            <AnimatePresence mode="wait">
-                <motion.div
-                    key={currentStep}
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -20 }}
-                    transition={{ duration: 0.2 }}
-                >
-                    <CurrentComponent data={formData} updateData={updateData} errors={errors} />
-                </motion.div>
-            </AnimatePresence>
-            </div >
-
-            /* ... footer ... */
-       /* ... */
-    );
-};
 
 const StepPricing = ({ data, updateData }: any) => {
     // Initialize packages if empty
@@ -430,7 +336,7 @@ const ServiceWizard = ({ onCancel }: { onCancel?: () => void }) => {
             const { data: companyData, error: companyError } = await supabase
                 .from('companies')
                 .select('id')
-                .eq('owner_id', user.id) // Assuming owner_id links to auth.users, or finding by email/etc. checking types.ts might clarify but typical pattern
+                .eq('profile_id', user.id) // Corrected column name to match schema
                 .single();
 
             // Fallback if owner_id not used, try to find by email or just insert if we know the user is type company

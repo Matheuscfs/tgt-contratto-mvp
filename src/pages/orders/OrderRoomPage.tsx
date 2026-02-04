@@ -289,6 +289,8 @@ const OrderRoomPage = () => {
             />
             <ReviewModal
                 orderId={order.id}
+                reviewerId={order.buyer_id}
+                revieweeId={order.seller_id}
                 isOpen={isReviewModalOpen}
                 onClose={() => setIsReviewModalOpen(false)}
                 onSuccess={fetchOrder}

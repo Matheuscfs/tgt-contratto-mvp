@@ -49,35 +49,40 @@ const CheckoutPage = () => {
 
         setProcessing(true);
         try {
-            const packageData = service.packages?.[tier]; // Warning: Make sure packages exist
-            const price = packageData?.price || service.price || 0; // Fallback
-
-            // Create Order
-            const { data, error } = await supabase
-                .from('orders')
-                .insert({
-                    buyer_id: user.id,
-                    seller_id: company.profile_id, // Assuming company has profile_id linked to user
+            // Secure Payment Flow via Edge Function
+            const { data, error } = await supabase.functions.invoke('create-checkout-session', {
+                body: {
                     service_id: service.id,
                     package_tier: tier,
-                    price: price,
-                    status: 'active', // Simulating instant approval
-                    // Calculate deadline based on delivery_time
-                    delivery_deadline: new Date(Date.now() + (packageData?.delivery_time || 3) * 24 * 60 * 60 * 1000).toISOString(),
-                    package_snapshot: packageData // [NEW] Snapshot of the package details
-                })
-                .select()
-                .single();
+                    user_id: user.id
+                }
+            });
 
             if (error) throw error;
 
-            addToast("Pagamento confirmado! Redirecionando...", "success");
-            navigate(`/orders/${data.id}`);
+            if (data?.paymentUrl) {
+                addToast("Sessão criada! Redirecionando para pagamento...", "success");
+                // In a real app, this goes to Stripe/Gateway. 
+                // For MVP, our mock function returns a URL. 
+                // If it's a mock URL, we might want to simulate the webhook trigger or just go there.
+                // Our mock URL: https://mock-payment-provider.com/pay...
+                // Since it's a mock, we can't actually "pay". 
+                // BUT, for the flow to work "end-to-end", we need the Order to be created.
+                // The Webhook creates the order.
+                // So the "Mock Payment Provider" should probably call the webhook?
+                // OR, for this test, we can simulate the webhook call manually or via a "Success Page" that triggers it.
+                // Given the requirement "Redirect to the URL", I will implement the redirect.
+                // *Self-correction*: If the URL is external/mock, the user leaves the app.
+                // Ideally, the Edge Function returns a URL that works.
+
+                window.location.href = data.paymentUrl;
+            } else {
+                throw new Error("URL de pagamento não recebida.");
+            }
 
         } catch (error: any) {
             console.error("Payment error:", error);
-            addToast("Erro ao processar pagamento: " + error.message, "error");
-        } finally {
+            addToast("Erro ao iniciar pagamento: " + error.message, "error");
             setProcessing(false);
         }
     };

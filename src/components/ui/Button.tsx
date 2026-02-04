@@ -3,26 +3,27 @@ import { Loader2 } from 'lucide-react';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
     isLoading?: boolean;
-    variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
+    variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger' | 'solid';
     size?: 'sm' | 'md' | 'lg';
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     ({ className = '', children, isLoading, variant = 'primary', size = 'md', disabled, ...props }, ref) => {
-        const baseStyles = 'inline-flex items-center justify-center font-medium rounded-[var(--radius-box)] focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed';
+        const baseStyles = 'inline-flex items-center justify-center font-bold rounded-xl focus:outline-none focus:ring-2 focus:ring-offset-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm active:scale-95';
 
         const variants = {
-            primary: 'bg-primary-600 text-white hover:bg-primary-700 focus:ring-primary-500',
-            secondary: 'bg-slate-100 text-slate-900 hover:bg-slate-200 focus:ring-slate-500',
-            outline: 'border border-slate-200 bg-transparent text-slate-700 hover:bg-slate-50 hover:border-slate-300 focus:ring-primary-500',
-            ghost: 'bg-transparent text-slate-700 hover:bg-slate-100 focus:ring-slate-500',
-            danger: 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500',
+            primary: 'bg-[#FF6B35] text-white hover:bg-[#E85D2E] focus:ring-[#FF6B35] shadow-orange-200',
+            solid: 'bg-[#FF6B35] text-white hover:bg-[#E85D2E] focus:ring-[#FF6B35] shadow-orange-200', // Alias for primary/orange
+            secondary: 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 focus:ring-gray-200',
+            outline: 'border-2 border-brand-primary text-brand-primary bg-transparent hover:bg-brand-primary/5 focus:ring-brand-primary',
+            ghost: 'bg-transparent text-gray-600 hover:bg-gray-100 focus:ring-gray-500 shadow-none',
+            danger: 'bg-red-500 text-white hover:bg-red-600 focus:ring-red-500 shadow-red-200',
         };
 
         const sizes = {
             sm: 'px-3 py-1.5 text-xs',
-            md: 'px-4 py-2 text-sm',
-            lg: 'px-6 py-3 text-base',
+            md: 'px-6 py-3 text-sm',
+            lg: 'px-8 py-4 text-base',
         };
 
         return (

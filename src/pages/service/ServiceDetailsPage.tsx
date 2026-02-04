@@ -22,7 +22,7 @@ const PricingSelector = ({ packages, onSelect, selectedTier, onCheckout }: Prici
     const tierLabels = { basic: 'Básico', standard: 'Padrão', premium: 'Premium' };
 
     return (
-        <div className="bg-white border border-gray-200 rounded-xl shadow-lg sticky top-24 overflow-hidden">
+        <div className="bg-white border border-gray-200 rounded-xl shadow-lg sticky top-5 overflow-hidden z-10">
             <div className="flex border-b border-gray-200">
                 {tiers.map(tier => (
                     <button
