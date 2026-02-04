@@ -175,51 +175,112 @@ const OrderRoomPage = () => {
                                 <p className="text-xs text-brand-primary font-bold uppercase">{order.package_tier}</p>
                             </div>
                         </div>
-                        <div className="text-2xl font-bold text-gray-900 mb-6">R$ {order.price}</div>
 
-                        <div className="border-t border-gray-100 pt-6 space-y-3">
-                            {/* Contextual Actions */}
-
-                            {/* SELLER ACTIONS */}
-                            {isSeller && order.status === 'active' && (
-                                <Button className="w-full" onClick={() => setIsDeliveryModalOpen(true)}>
-                                    Entregar Trabalho
-                                </Button>
-                            )}
-
-                            {/* BUYER ACTIONS */}
-                            {(isBuyer || !isSeller) && (
-                                <div className="space-y-3">
-                                    {order.status === 'delivered' && (
-                                        <>
-                                            <Button className="w-full bg-green-600 hover:bg-green-700 text-white" onClick={() => setIsReviewModalOpen(true)}>
-                                                Aprovar e Finalizar
-                                            </Button>
-                                            <Button variant="secondary" className="w-full" onClick={() => updateStatus('in_progress')}>
-                                                Solicitar Revisão
-                                            </Button>
-                                            <p className="text-xs text-center text-gray-500">
-                                                Verifique os arquivos anexados no chat antes de aprovar.
-                                            </p>
-                                        </>
-                                    )}
-                                    {order.status === 'active' && isBuyer && (
-                                        <p className="text-xs text-center text-gray-500">Aguardando entrega do vendedor.</p>
-                                    )}
-                                </div>
-                            )}
-
-                            {/* Fallback for viewing */}
-                            {order.status === 'completed' && (
-                                <div className="text-center text-green-600 font-medium py-2 bg-green-50 rounded">
-                                    Obrigado pela compra!
-                                </div>
-                            )}
+                        {/* STATUS BAR - IMPROVED COLORS */}
+                        <div className="flex items-center space-x-2 text-sm text-gray-500">
+                            <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide border
+                                    ${order.status === 'active' ? 'bg-blue-50 text-blue-700 border-blue-200' : ''}
+                                    ${order.status === 'delivered' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' : ''}
+                                    ${order.status === 'completed' ? 'bg-green-50 text-green-700 border-green-200' : ''}
+                                    ${order.status === 'in_progress' ? 'bg-orange-50 text-orange-700 border-orange-200' : ''}
+                                    ${order.status === 'cancelled' ? 'bg-red-50 text-red-700 border-red-200' : ''}
+                                `}>
+                                {order.status === 'in_progress' ? 'Em Revisão' : order.status}
+                            </span>
                         </div>
                     </div>
-                </div>
 
-            </main>
+                    {/* Delivery Display Card */}
+                    {(order.status === 'delivered' || order.status === 'completed') && (
+                        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-xl p-6 mb-6">
+                            <h3 className="text-lg font-bold text-blue-900 mb-2 flex items-center">
+                                <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                                Entrega Disponível
+                            </h3>
+                            <p className="text-sm text-blue-700 mb-4">
+                                O vendedor enviou os arquivos finais. Baixe para conferir.
+                            </p>
+                            <Button
+                                className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto"
+                                onClick={async () => {
+                                    // Generate Signed URL dynamically
+                                    try {
+                                        // Get path from snapshot if available, or fallback to trying to list/guess
+                                        // Accessing 'package_snapshot' as any to avoid strict TS issues if types not updated
+                                        const snapshot = order.package_snapshot as any;
+                                        const filePath = snapshot?.latest_delivery;
+
+                                        if (!filePath) {
+                                            addToast("Arquivo não encontrado no registro.", "error");
+                                            return;
+                                        }
+
+                                        const { data, error } = await supabase.storage
+                                            .from('order-deliverables')
+                                            .createSignedUrl(filePath, 60); // 60 seconds validity
+
+                                        if (error) throw error;
+                                        if (data?.signedUrl) {
+                                            window.open(data.signedUrl, '_blank');
+                                        }
+                                    } catch (e: any) {
+                                        addToast("Erro ao gerar link de download: " + e.message, "error");
+                                    }
+                                }}
+                            >
+                                Baixar Arquivos
+                            </Button>
+                        </div>
+                    )}
+
+
+                    <div className="border-t border-gray-100 pt-6 space-y-3">
+                        {/* Contextual Actions */}
+
+                        {/* SELLER ACTIONS */}
+                        {isSeller && (order.status === 'active' || order.status === 'in_progress') && (
+                            <Button className="w-full" onClick={() => setIsDeliveryModalOpen(true)}>
+                                {order.status === 'in_progress' ? 'Enviar Nova Versão' : 'Entregar Trabalho'}
+                            </Button>
+                        )}
+
+                        {/* BUYER ACTIONS */}
+                        {(isBuyer || !isSeller) && (
+                            <div className="space-y-3">
+                                {order.status === 'delivered' && (
+                                    <>
+                                        <Button className="w-full bg-green-600 hover:bg-green-700 text-white" onClick={() => setIsReviewModalOpen(true)}>
+                                            Aprovar e Finalizar
+                                        </Button>
+                                        <Button variant="secondary" className="w-full text-red-600 border-red-200 hover:bg-red-50" onClick={() => updateStatus('in_progress')}>
+                                            Solicitar Revisão
+                                        </Button>
+                                        <p className="text-xs text-center text-gray-500">
+                                            Verifique os arquivos anexados no chat antes de aprovar.
+                                        </p>
+                                    </>
+                                )}
+                                {(order.status === 'active' || order.status === 'in_progress') && isBuyer && (
+                                    <p className="text-xs text-center text-gray-500">
+                                        {order.status === 'in_progress' ? 'Aguardando nova versão do vendedor.' : 'Aguardando entrega do vendedor.'}
+                                    </p>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Fallback for viewing */}
+                        {order.status === 'completed' && (
+                            <div className="text-center text-green-600 font-medium py-2 bg-green-50 rounded">
+                                Obrigado pela compra!
+                            </div>
+                        )}
+                    </div>
+                </div>
+        </div>
+
+            </main >
             <DeliveryModal
                 orderId={order.id}
                 isOpen={isDeliveryModalOpen}
@@ -232,7 +293,7 @@ const OrderRoomPage = () => {
                 onClose={() => setIsReviewModalOpen(false)}
                 onSuccess={fetchOrder}
             />
-        </div>
+        </div >
     );
 };
 

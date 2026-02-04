@@ -8,6 +8,7 @@ import LoadingSpinner from './components/ui/LoadingSpinner';
 import PageTransition from './components/PageTransition';
 import DashboardLayout from './components/layout/DashboardLayout';
 import ErrorBoundary from './components/ErrorBoundary';
+import InstitutionalLayout from './components/layout/InstitutionalLayout';
 
 // Pages
 const ClientLandingPage = lazy(() => import('./pages/ClientLandingPage'));
@@ -56,16 +57,14 @@ const ForCompaniesPage = lazy(() => import('./pages/info/ForCompaniesPage'));
 const ForClientsPage = lazy(() => import('./pages/info/ForClientsPage'));
 const HelpPage = lazy(() => import('./pages/info/HelpPage'));
 const ContactPage = lazy(() => import('./pages/info/ContactPage'));
-const AboutPage = lazy(() => import('./pages/info/AboutPage'));
+const ReviewModal = lazy(() => import('./components/ReviewModal')); // If needed
+const AboutPage = lazy(() => import('./pages/institucional/AboutPage'));
+const NewsPage = lazy(() => import('./pages/institucional/NewsPage'));
+const BlogPage = lazy(() => import('./pages/institucional/BlogPage'));
 const CareersPage = lazy(() => import('./pages/info/CareersPage'));
 const PrivacyPage = lazy(() => import('./pages/info/PrivacyPage'));
 const TermsPage = lazy(() => import('./pages/info/TermsPage'));
 const PlansPage = lazy(() => import('./pages/PlansPage'));
-
-// Lazy loaded pages (if any were strictly lazy loaded in App.tsx, keeping consistency)
-// The original App.tsx had lazy imports for Forgot/Reset password but they weren't used in the Routes definitions in the file snippet I read!
-// lines 75-131 do NOT show routes for forgot/reset password.
-// I will ignore them for now or check if I missed them.
 
 // Wrapper for animated routes
 const AnimatedElement = ({ children }: { children: React.ReactElement }) => (
@@ -152,7 +151,19 @@ const MainRoutes = () => {
                         <Route path="/para-clientes" element={<AnimatedElement><ForClientsPage /></AnimatedElement>} />
                         <Route path="/ajuda" element={<AnimatedElement><HelpPage /></AnimatedElement>} />
                         <Route path="/contato" element={<AnimatedElement><ContactPage /></AnimatedElement>} />
-                        <Route path="/sobre" element={<AnimatedElement><AboutPage /></AnimatedElement>} />
+
+                        {/* Institutional Routes */}
+                        <Route path="/institucional" element={<InstitutionalLayout />}>
+                            <Route path="sobre" element={<AnimatedElement><AboutPage /></AnimatedElement>} />
+                            <Route path="noticias" element={<AnimatedElement><NewsPage /></AnimatedElement>} />
+                            <Route path="blog" element={<AnimatedElement><BlogPage /></AnimatedElement>} />
+                        </Route>
+
+                        {/* Redirects for old routes */}
+                        <Route path="/sobre" element={<Navigate to="/institucional/sobre" replace />} />
+                        <Route path="/noticias" element={<Navigate to="/institucional/noticias" replace />} />
+                        <Route path="/blog" element={<Navigate to="/institucional/blog" replace />} />
+
                         <Route path="/carreiras" element={<AnimatedElement><CareersPage /></AnimatedElement>} />
                         <Route path="/privacidade" element={<AnimatedElement><PrivacyPage /></AnimatedElement>} />
                         <Route path="/termos" element={<AnimatedElement><TermsPage /></AnimatedElement>} />

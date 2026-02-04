@@ -10,7 +10,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 
 // Step Components (Placeholders for now)
-const StepOverview = ({ data, updateData }: any) => {
+const StepOverview = ({ data, updateData, errors }: any) => {
     const categoryOptions = [
         { label: 'Consultoria', value: 'consultoria' },
         { label: 'Design & Criatividade', value: 'design' },
@@ -27,22 +27,31 @@ const StepOverview = ({ data, updateData }: any) => {
             </div>
 
             <div className="space-y-6 max-w-2xl mx-auto">
-                <Input
-                    label="Título do Serviço"
-                    placeholder="Ex: Vou criar um logo minimalista para sua marca"
-                    value={data.title}
-                    onChange={(e) => updateData({ title: e.target.value })}
-                    helperText="Use palavras-chave que os clientes buscariam."
-                />
+                <motion.div animate={errors?.title ? { x: [-10, 10, -10, 10, 0] } : {}}>
+                    <Input
+                        label="Título do Serviço"
+                        placeholder="Ex: Vou criar um logo minimalista para sua marca"
+                        value={data.title}
+                        onChange={(e) => updateData({ title: e.target.value })}
+                        helperText="Use palavras-chave que os clientes buscariam."
+                        className={errors?.title ? "border-red-500 focus:ring-red-500" : ""}
+                    />
+                    {errors?.title && <p className="text-red-500 text-xs mt-1">O título é obrigatório.</p>}
+                </motion.div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <Select
-                        label="Categoria"
-                        value={data.category}
-                        onChange={(value) => updateData({ category: value })}
-                        options={categoryOptions}
-                        placeholder="Selecione..."
-                    />
+                    <motion.div animate={errors?.category ? { x: [-10, 10, -10, 10, 0] } : {}} className="w-full">
+                        <Select
+                            label="Categoria"
+                            value={data.category}
+                            onChange={(value) => updateData({ category: value })}
+                            options={categoryOptions}
+                            placeholder="Selecione..."
+                        // Select might not accept className prop directly depending on implementation, 
+                        // but wrapping in div with border if needed or handling error msg.
+                        />
+                        {errors?.category && <p className="text-red-500 text-xs mt-1">Selecione uma categoria.</p>}
+                    </motion.div>
                     <Input
                         label="Tags (Separadas por vírgula)"
                         placeholder="Ex: logo, branding, design"
@@ -64,6 +73,109 @@ const StepOverview = ({ data, updateData }: any) => {
                 </div>
             </div>
         </div>
+    );
+};
+
+// ... (StepPricing and StepGallery remain largely unchanged unless we add validation there too)
+// Skipping large blocks of unchanged code for brevity in tool call, relying on target matching.
+// But I need to update the calls to CurrentComponent to pass errors.
+
+/* ... StepPricing ... */
+/* ... StepGallery ...) */
+
+const ServiceWizard = ({ onCancel }: { onCancel?: () => void }) => {
+    const { user } = useAuth();
+    const { addToast } = useToast();
+    const navigate = useNavigate();
+    const [currentStep, setCurrentStep] = useState(0);
+    const [loading, setLoading] = useState(false);
+    const [errors, setErrors] = useState<any>({});
+    const [formData, setFormData] = useState({
+        title: '',
+        category: '',
+        description: '',
+        tags: '',
+        packages: {} as ServicePackages,
+        gallery: [] as string[]
+    });
+
+    // ... steps definition ...
+
+    /* ... calculateStartingPrice ... */
+
+    /* ... handleSubmit ... */
+
+    const validateStep = (step: number) => {
+        const newErrors: any = {};
+        let isValid = true;
+
+        if (step === 0) {
+            if (!formData.title.trim()) {
+                newErrors.title = true;
+                isValid = false;
+            }
+            if (!formData.category) {
+                newErrors.category = true;
+                isValid = false;
+            }
+        }
+
+        // Add pricing validation if needed
+        if (step === 1) {
+            const hasPrice = Object.values(formData.packages || {}).some((p: any) => p.price > 0);
+            if (!hasPrice) {
+                addToast("Defina o preço de pelo menos um pacote.", "error");
+                // Not using aggressive shake here for table, just toast
+                isValid = false;
+            }
+        }
+
+        setErrors(newErrors);
+        return isValid;
+    };
+
+
+    const handleNext = () => {
+        if (!validateStep(currentStep)) {
+            // Trigger visual feedback (Aggressive Shake is handled by Framer Motion via errors state)
+            return;
+        }
+
+        if (currentStep < steps.length - 1) {
+            setCurrentStep(curr => curr + 1);
+            setErrors({}); // Clear errors on next step
+        } else {
+            handleSubmit();
+        }
+    };
+
+    /* ... handleBack ... */
+
+    /* ... updateData ... */
+
+    // ...
+
+    return (
+        /* ... wrapper ... */
+        /* ... header ... */
+
+        {/* Content */ }
+        < div className = "p-8 min-h-[400px]" >
+            <AnimatePresence mode="wait">
+                <motion.div
+                    key={currentStep}
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    transition={{ duration: 0.2 }}
+                >
+                    <CurrentComponent data={formData} updateData={updateData} errors={errors} />
+                </motion.div>
+            </AnimatePresence>
+            </div >
+
+            /* ... footer ... */
+       /* ... */
     );
 };
 
@@ -274,12 +386,13 @@ const StepGallery = ({ data, updateData }: any) => {
     );
 };
 
-const ServiceWizard = () => {
+const ServiceWizard = ({ onCancel }: { onCancel?: () => void }) => {
     const { user } = useAuth();
     const { addToast } = useToast();
     const navigate = useNavigate();
     const [currentStep, setCurrentStep] = useState(0);
     const [loading, setLoading] = useState(false);
+    const [errors, setErrors] = useState<any>({});
     const [formData, setFormData] = useState({
         title: '',
         category: '',
@@ -373,9 +486,41 @@ const ServiceWizard = () => {
         }
     };
 
+    const validateStep = (step: number) => {
+        const newErrors: any = {};
+        let isValid = true;
+
+        if (step === 0) {
+            if (!formData.title.trim()) {
+                newErrors.title = true;
+                isValid = false;
+            }
+            if (!formData.category) {
+                newErrors.category = true;
+                isValid = false;
+            }
+        }
+
+        if (step === 1) {
+            const hasPrice = Object.values(formData.packages || {}).some((p: any) => p.price > 0);
+            if (!hasPrice) {
+                addToast("Defina o preço de pelo menos um pacote.", "error");
+                isValid = false;
+            }
+        }
+
+        setErrors(newErrors);
+        return isValid;
+    };
+
     const handleNext = () => {
+        if (!validateStep(currentStep)) {
+            return;
+        }
+
         if (currentStep < steps.length - 1) {
             setCurrentStep(curr => curr + 1);
+            setErrors({});
         } else {
             handleSubmit();
         }
@@ -418,14 +563,14 @@ const ServiceWizard = () => {
                         exit={{ opacity: 0, x: -20 }}
                         transition={{ duration: 0.2 }}
                     >
-                        <CurrentComponent data={formData} updateData={updateData} />
+                        <CurrentComponent data={formData} updateData={updateData} errors={errors} />
                     </motion.div>
                 </AnimatePresence>
             </div>
 
             {/* Footer Actions */}
             <div className="p-4 border-t border-gray-100 flex justify-between">
-                <Button variant="secondary" onClick={handleBack} disabled={currentStep === 0 && !onCancel || loading}>
+                <Button variant="secondary" onClick={currentStep === 0 ? onCancel : handleBack} disabled={(currentStep === 0 && !onCancel) || loading}>
                     {currentStep === 0 ? 'Cancelar' : 'Voltar'}
                 </Button>
                 <Button variant="primary" onClick={handleNext} isLoading={loading}>

@@ -24,6 +24,16 @@ const DashboardOverviewPage: React.FC = () => {
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [recentBookings, setRecentBookings] = useState<any[]>([]); // TODO: Replace any with Booking type
+    const [sellerStats, setSellerStats] = useState<{
+        current_level: string;
+        next_level: string | null;
+        orders_to_next_level: number;
+        total_completed_orders: number;
+        average_rating: number;
+        response_time?: string;
+    } | null>(null);
+
+    // ...
 
     // Mock Data for Charts (Replace with API data later)
     const viewsData = [
@@ -54,7 +64,7 @@ const DashboardOverviewPage: React.FC = () => {
                 // 1. Get Company ID
                 const { data: companyData, error: companyError } = await supabase
                     .from('companies')
-                    .select('id')
+                    .select('id, owner_id')
                     .eq('profile_id', user.id)
                     .single();
 
@@ -92,6 +102,7 @@ const DashboardOverviewPage: React.FC = () => {
 
                 setRecentBookings(bookingsData || []);
 
+
             } catch (err) {
                 console.error("Error fetching dashboard data:", err);
             } finally {
@@ -99,7 +110,20 @@ const DashboardOverviewPage: React.FC = () => {
             }
         };
 
+        const fetchSellerStats = async () => {
+            const { data, error } = await supabase
+                .from('seller_stats')
+                .select('*')
+                .eq('seller_id', user.id)
+                .single();
+
+            if (!error && data) {
+                setSellerStats(data);
+            }
+        };
+
         fetchData();
+        fetchSellerStats();
     }, [user]);
 
     return (
@@ -219,14 +243,54 @@ const DashboardOverviewPage: React.FC = () => {
                 </AnimatedSection>
 
                 {/* Quick Tips */}
-                <AnimatedSection delay={0.4} className="bg-indigo-50 border border-indigo-100 shadow rounded-lg p-6">
-                    <h3 className="text-lg leading-6 font-medium text-indigo-900 mb-4">Dicas para seu negócio</h3>
-                    <ul className="list-disc list-inside text-indigo-800 space-y-2">
-                        <li>Responda aos orçamentos em até 1 hora.</li>
-                        <li>Mantenha seus serviços atualizados com preços reais.</li>
-                        <li>Peça avaliações aos clientes após concluir um serviço.</li>
-                    </ul>
-                </AnimatedSection>
+                <div className="space-y-6">
+                    <AnimatedSection delay={0.4} className="bg-white shadow rounded-lg p-6">
+                        <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">Métricas de Crescimento</h3>
+                        {sellerStats ? (
+                            <div className="space-y-4">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-sm font-medium text-gray-500">Nível Atual</span>
+                                    <Badge variant="purple">{sellerStats.current_level}</Badge>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-sm font-medium text-gray-500">Média de Avaliação</span>
+                                    <span className="font-bold text-gray-900 flex items-center gap-1">
+                                        {sellerStats.average_rating} <StarIcon />
+                                    </span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-sm font-medium text-gray-500">Tempo de Resposta</span>
+                                    <span className="font-bold text-gray-900">{sellerStats.response_time || 'N/A'}</span>
+                                </div>
+                                {sellerStats.next_level && (
+                                    <div>
+                                        <div className="flex justify-between text-sm mb-1">
+                                            <span className="font-medium text-gray-700">Rumo ao {sellerStats.next_level}</span>
+                                            <span className="text-gray-500">{sellerStats.orders_to_next_level} pedidos restantes</span>
+                                        </div>
+                                        <div className="w-full bg-gray-200 rounded-full h-2.5">
+                                            {/* Simple calculation for progress bar assuming fixed thresholds for MVP */}
+                                            {/* Order thresholds: Level 1 (5), Level 2 (20) */}
+                                            {/* If Beginner -> L1 (Target 5), L1 -> L2 (Target 20) */}
+                                            <div className="bg-brand-primary h-2.5 rounded-full" style={{ width: `${Math.min(100, Math.max(5, (sellerStats.total_completed_orders / (sellerStats.total_completed_orders + sellerStats.orders_to_next_level)) * 100))}%` }}></div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            <p className="text-sm text-gray-500">Dados insuficientes para cálculo.</p>
+                        )}
+                    </AnimatedSection>
+
+                    <AnimatedSection delay={0.5} className="bg-indigo-50 border border-indigo-100 shadow rounded-lg p-6">
+                        <h3 className="text-lg leading-6 font-medium text-indigo-900 mb-4">Dicas para seu negócio</h3>
+                        <ul className="list-disc list-inside text-indigo-800 space-y-2">
+                            <li>Responda aos orçamentos em até 1 hora.</li>
+                            <li>Mantenha seus serviços atualizados com preços reais.</li>
+                            <li>Peça avaliações aos clientes após concluir um serviço.</li>
+                        </ul>
+                    </AnimatedSection>
+                </div>
             </div>
         </div>
     );

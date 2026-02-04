@@ -72,8 +72,21 @@ export const useCompanyProfile = (slug: string | undefined) => {
                 caption: p.caption || ''
             }));
 
-            // Map Owner Profile
-            const owner = undefined;
+            // Map Owner Profile & Fetch Stats
+            let owner = undefined;
+            let level: 'Beginner' | 'Level 1' | 'Level 2' | 'Pro' = 'Beginner';
+
+            if ((raw as any).owner_id) {
+                const { data: stats } = await supabase
+                    .from('seller_stats')
+                    .select('current_level')
+                    .eq('seller_id', (raw as any).owner_id)
+                    .single();
+
+                if (stats && stats.current_level) {
+                    level = stats.current_level as any;
+                }
+            }
 
             // Construct Final Object
             const company: Company = {
@@ -85,6 +98,7 @@ export const useCompanyProfile = (slug: string | undefined) => {
                 logo: raw.logo_url || 'https://placehold.co/150',
                 coverImage: raw.cover_image_url || 'https://placehold.co/1200x400',
                 category: raw.category,
+                level: level,
 
                 rating: parseFloat(avgRating.toFixed(1)),
                 reviewCount: reviews.length,

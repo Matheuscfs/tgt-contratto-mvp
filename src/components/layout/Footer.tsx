@@ -5,7 +5,7 @@ const Footer: React.FC = () => {
   return (
     <footer className="bg-white border-t-4 border-brand-primary">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
           <div>
             <h3 className="text-sm font-semibold text-gray-500 tracking-wider uppercase">Soluções</h3>
             <ul className="mt-4 space-y-4">
@@ -28,24 +28,26 @@ const Footer: React.FC = () => {
             </ul>
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-gray-500 tracking-wider uppercase">Serviços Populares</h3>
+            <h3 className="text-sm font-semibold text-gray-500 tracking-wider uppercase">Categorias Populares</h3>
             <ul className="mt-4 space-y-4">
-              <li><Link to="/?q=Pedreiro" className="text-base text-gray-500 hover:text-gray-900">Pedreiros</Link></li>
-              <li><Link to="/?q=Eletricista" className="text-base text-gray-500 hover:text-gray-900">Eletricistas</Link></li>
-              <li><Link to="/?q=Encanador" className="text-base text-gray-500 hover:text-gray-900">Encanadores</Link></li>
-              <li><Link to="/?q=Pintor" className="text-base text-gray-500 hover:text-gray-900">Pintores</Link></li>
-              <li><Link to="/?q=Diarista" className="text-base text-gray-500 hover:text-gray-900">Diaristas</Link></li>
+              <li><Link to="/?q=Desenvolvimento" className="text-base text-gray-500 hover:text-gray-900">Desenvolvimento e TI</Link></li>
+              <li><Link to="/?q=Design" className="text-base text-gray-500 hover:text-gray-900">Design e Criativo</Link></li>
+              <li><Link to="/?q=Marketing" className="text-base text-gray-500 hover:text-gray-900">Marketing Digital</Link></li>
+              <li><Link to="/?q=Redacao" className="text-base text-gray-500 hover:text-gray-900">Redação e Tradução</Link></li>
+              <li><Link to="/?q=Video" className="text-base text-gray-500 hover:text-gray-900">Vídeo e Animação</Link></li>
             </ul>
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-gray-500 tracking-wider uppercase">Cidades Atendidas</h3>
+            <h3 className="text-sm font-semibold text-gray-500 tracking-wider uppercase">Em Alta</h3>
             <ul className="mt-4 space-y-4">
-              <li><Link to="/?loc=Sao Paulo" className="text-base text-gray-500 hover:text-gray-900">São Paulo</Link></li>
-              <li><Link to="/?loc=Rio de Janeiro" className="text-base text-gray-500 hover:text-gray-900">Rio de Janeiro</Link></li>
-              <li><Link to="/?loc=Belo Horizonte" className="text-base text-gray-500 hover:text-gray-900">Belo Horizonte</Link></li>
-              <li><Link to="/?loc=Curitiba" className="text-base text-gray-500 hover:text-gray-900">Curitiba</Link></li>
+              <li><Link to="/?q=React" className="text-base text-gray-500 hover:text-gray-900">Desenvolvedores React</Link></li>
+              <li><Link to="/?q=Logo" className="text-base text-gray-500 hover:text-gray-900">Design de Logo</Link></li>
+              <li><Link to="/?q=SEO" className="text-base text-gray-500 hover:text-gray-900">Especialista SEO</Link></li>
+              <li><Link to="/?q=Wordpress" className="text-base text-gray-500 hover:text-gray-900">WordPress</Link></li>
+              <li><Link to="/?q=Social" className="text-base text-gray-500 hover:text-gray-900">Social Media</Link></li>
             </ul>
           </div>
+
           <div>
             <h3 className="text-sm font-semibold text-gray-500 tracking-wider uppercase">Legal</h3>
             <ul className="mt-4 space-y-4">

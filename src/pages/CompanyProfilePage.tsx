@@ -18,6 +18,7 @@ import { useSimilarCompanies } from '../hooks/useSimilarCompanies';
 import LoadingSkeleton from '../components/ui/LoadingSkeleton';
 import ProfileSidebar from '../components/ProfileSidebar';
 import ReviewsList from '../components/ReviewsList';
+import SellerBadge, { SellerLevel } from '../components/SellerBadge';
 
 const CompanyProfilePage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -162,9 +163,13 @@ const CompanyProfilePage: React.FC = () => {
           {/* RIGHT MAIN CONTENT - Product Showcase */}
           <div className="lg:col-span-8 order-1 lg:order-2 space-y-8">
 
-            {/* About / Bio */}
+
+
             <section className="bg-white p-6 md:p-8 rounded-[var(--radius-box)] border border-gray-100 shadow-sm">
-              <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">{company.companyName}</h1>
+              <div className="flex items-center gap-3 mb-4">
+                <h1 className="text-2xl md:text-3xl font-bold text-gray-900">{company.companyName}</h1>
+                {company.level && <SellerBadge level={company.level as SellerLevel} showLabel={true} className="text-sm px-2 py-1" />}
+              </div>
               <p className="text-gray-600 whitespace-pre-wrap leading-relaxed text-lg">
                 {company.description}
               </p>

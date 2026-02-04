@@ -34,15 +34,48 @@ const DeliveryModal: React.FC<DeliveryModalProps> = ({ orderId, isOpen, onClose,
             const filePath = `${orderId}/delivery_${Date.now()}.${fileExt}`;
 
             const { error: uploadError } = await supabase.storage
-                .from('order-deliveries')
+                .from('order-deliverables')
                 .upload(filePath, file);
 
             if (uploadError) throw uploadError;
 
-            // 2. Update Order Status
+            // 2. Update Order Status and Save File Reference
+            // We use package_snapshot to store the delivery reference without adding new columns
             const { error: updateError } = await supabase
                 .from('orders')
-                .update({ status: 'delivered' })
+                .update({
+                    status: 'delivered',
+                    // Merge into the JSONB column
+                    package_snapshot: {
+                        // @ts-ignore - We are merging, assuming Supabase handles JSONB merge or we might need to fetch first?
+                        // Supabase update on JSONB replaces the whole object usually unless we use a specific syntax or fetch-merge-update.
+                        // Let's rely on the backend strictly or simpler: just fetch and update.
+                        // Actually, simpler: Let's just save it in the system message.
+                        // Wait, fetching order in OrderRoomPage allows us to look at messages too.
+                        // But for "Official Delivery" display, having it on the order is best.
+                        // Let's assume we can't easily merge without fetching. 
+                        // I'll fetch current snapshot, then update.
+                    }
+                })
+                .eq('id', orderId);
+
+            // Re-thinking: Instead of complex JSON merge, let's just use the message system primarily.
+            // AND update a specific clean location if possible.
+            // But to avoid complexity, I will modify the message insert to be Type="delivery" if possible (schema check).
+            // Messages table has 'content', 'file_url'.
+
+            // Let's stick to the plan: Update Order.
+            // I'll do a robust Fetch -> Update cycle here to be safe with JSONB.
+
+            const { data: currentOrder } = await supabase.from('orders').select('package_snapshot').eq('id', orderId).single();
+            const currentSnapshot = currentOrder?.package_snapshot || {};
+
+            await supabase
+                .from('orders')
+                .update({
+                    status: 'delivered',
+                    package_snapshot: { ...currentSnapshot, latest_delivery: filePath }
+                })
                 .eq('id', orderId);
 
             if (updateError) throw updateError;

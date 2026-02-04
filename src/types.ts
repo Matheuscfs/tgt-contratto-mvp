@@ -74,6 +74,7 @@ export interface Company {
   rating: number;
   reviewCount: number;
   description: string;
+  level?: 'Beginner' | 'Level 1' | 'Level 2' | 'Pro';
   address: Address;
   phone?: string;
   email: string;
@@ -162,11 +163,7 @@ export interface DbCompany {
   review_count?: number;
   status?: string;
   verified?: boolean;
-
-  // Joins
-  services?: DbService[];
-  reviews?: DbReview[];
-  portfolio_items?: DbPortfolioItem[];
+  level?: 'Beginner' | 'Level 1' | 'Level 2' | 'Pro';
 }
 
 export interface Service {
