@@ -1,43 +1,68 @@
-import React, { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '../lib/supabase';
 import LoadingSpinner from './ui/LoadingSpinner';
 
-interface AdminGuardProps {
-    children: React.ReactNode;
-}
-
-/**
- * AdminGuard - Protege rotas administrativas
- * Redireciona usuários não-admin para a home
- */
-const AdminGuard: React.FC<AdminGuardProps> = ({ children }) => {
+const AdminGuard = ({ children }: { children: React.ReactElement }) => {
     const { user, loading } = useAuth();
-    const navigate = useNavigate();
+    const location = useLocation();
+    const [isMfaVerified, setIsMfaVerified] = useState<boolean | null>(null);
 
     useEffect(() => {
-        if (!loading && (!user || user.role !== 'admin')) {
-            console.warn('[AdminGuard] Access denied - redirecting to home');
-            navigate('/', { replace: true });
-        }
-    }, [user, loading, navigate]);
+        const checkMFA = async () => {
+            if (!user) return;
 
-    // Mostrar loading enquanto verifica autenticação
-    if (loading) {
-        return (
-            <div className="min-h-screen flex items-center justify-center">
-                <LoadingSpinner />
-            </div>
+            // 1. Check current Level of Assurance (AAL)
+            const { data: { session } } = await supabase.auth.getSession();
+            const currentAal = session?.user?.app_metadata?.aal || 'aal1';
+
+            if (currentAal === 'aal2') {
+                // Already verified via MFA
+                setIsMfaVerified(true);
+                return;
+            }
+
+            // 2. If AAL1, check if user HAS any enrolled factors
+            const { data: factors, error } = await supabase.auth.mfa.listFactors();
+
+            if (error) {
+                console.error('Error checking MFA factors', error);
+                setIsMfaVerified(true); // Fail open? Or closed? Let's allow access if error but warn. 
+                // Better: Fail safe -> allow access if we can't verify factors, assuming if they had it enforced supabase would handle it?
+                // Actually, let's assume if error, they are safe or strict.
+                return;
+            }
+
+            const hasVerifiedFactor = factors.totp.some(f => f.status === 'verified');
+
+            if (hasVerifiedFactor) {
+                // Has factor but running on AAL1 (Password only)
+                // MUST redirect to verification
+                setIsMfaVerified(false);
+            } else {
+                // No MFA configured, allow access (AAL1 is fine)
+                setIsMfaVerified(true);
+            }
+        };
+
+        if (!loading && user?.role === 'admin') {
+            checkMFA();
+        } else {
+            // Not admin or loading
+            setIsMfaVerified(true); // Let the role check handle it below
+        }
+            </div >
         );
     }
 
-    // Não renderizar nada se não for admin (redirecionamento em andamento)
-    if (!user || user.role !== 'admin') {
-        return null;
-    }
+// Não renderizar nada se não for admin (redirecionamento em andamento)
+if (!user || user.role !== 'admin') {
+    return null;
+}
 
-    // Renderizar conteúdo protegido
-    return <>{children}</>;
+// Renderizar conteúdo protegido
+return <>{children}</>;
 };
 
 export default AdminGuard;

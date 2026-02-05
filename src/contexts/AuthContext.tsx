@@ -52,14 +52,23 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             }
 
             // Buscar role do usuário
-            const { data: profileData } = await supabase
+            const { data: profileData, error: profileError } = await supabase
               .from('profiles')
               .select('role')
               .eq('id', session.user.id)
               .single();
 
-            if (profileData?.role) {
-              userData.role = profileData.role as 'user' | 'admin' | 'moderator';
+            if (profileError) {
+              console.error('[AuthContext] Error fetching profile role:', profileError);
+            }
+
+            if (profileData) {
+              console.log('[AuthContext] Fetched role for user:', profileData.role);
+              if (profileData.role) {
+                userData.role = profileData.role as 'user' | 'admin' | 'moderator';
+              }
+            } else {
+              console.warn('[AuthContext] No profile data found for user');
             }
           } catch (companyError) {
             console.error("AuthContext: Failed to fetch company data", companyError);
@@ -110,6 +119,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               userData.type = 'company'; // Force type to company if record exists
               userData.companySlug = companyData.slug;
             }
+
+            // Buscar role do usuário (CRITICAL FIX: Fetch role in onAuthStateChange)
+            const { data: profileData } = await supabase
+              .from('profiles')
+              .select('role')
+              .eq('id', session.user.id)
+              .single();
+
+            if (profileData?.role) {
+              userData.role = profileData.role as 'user' | 'admin' | 'moderator';
+            }
           } catch (companyError) {
             console.error("AuthContext: Failed to fetch company data on state change", companyError);
           }
@@ -130,6 +150,39 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       subscription.unsubscribe();
     };
   }, []);
+
+  // --- ADMIN SESSION TIMEOUT LOGIC ---
+  useEffect(() => {
+    // Only enforce timeout for admins/moderators
+    if (!user || (user.role !== 'admin' && user.role !== 'moderator')) return;
+
+    const TIMEOUT_DURATION = 15 * 60 * 1000; // 15 minutes
+    let timeoutId: NodeJS.Timeout;
+
+    const logoutUser = () => {
+      console.warn('[AuthContext] Session timed out due to inactivity.');
+      logout();
+    };
+
+    const resetTimer = () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      timeoutId = setTimeout(logoutUser, TIMEOUT_DURATION);
+    };
+
+    // Events to detect activity
+    const events = ['mousedown', 'keydown', 'scroll', 'touchstart'];
+
+    // Set initial timer
+    resetTimer();
+
+    // Attach listeners
+    events.forEach(event => document.addEventListener(event, resetTimer));
+
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      events.forEach(event => document.removeEventListener(event, resetTimer));
+    };
+  }, [user]); // Re-run when user changes
 
   const login = async () => {
     // This is a placeholder as actual login happens in LoginPage via Supabase directly.

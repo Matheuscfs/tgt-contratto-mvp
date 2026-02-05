@@ -49,6 +49,8 @@ const DashboardConfiguracoesPage = lazy(() => import('./pages/pro/DashboardConfi
 
 // Admin Pages
 const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
+const AdminSecurityPage = lazy(() => import('./pages/admin/AdminSecurityPage'));
+const Verify2FAPage = lazy(() => import('./pages/admin/Verify2FAPage'));
 
 // Service Details
 const ServiceDetailsPage = lazy(() => import('./pages/service/ServiceDetailsPage'));
@@ -176,11 +178,16 @@ const MainRoutes = () => {
                         <Route path="/planos" element={<AnimatedElement><PlansPage /></AnimatedElement>} />
 
                         {/* Admin Route - Protected */}
-                        <Route path="/admin" element={
+                        <AdminGuard>
+                            <AnimatedElement><AdminDashboard /></AnimatedElement>
+                        </AdminGuard>
+                        } />
+                        <Route path="/admin/security" element={
                             <AdminGuard>
-                                <AnimatedElement><AdminDashboard /></AnimatedElement>
+                                <AnimatedElement><AdminSecurityPage /></AnimatedElement>
                             </AdminGuard>
                         } />
+                        <Route path="/admin/verify-2fa" element={<AnimatedElement><Verify2FAPage /></AnimatedElement>} />
 
                         {/* 404 - Not Found */}
                         <Route path="*" element={<AnimatedElement><NotFoundPage /></AnimatedElement>} />
