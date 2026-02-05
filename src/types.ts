@@ -134,6 +134,7 @@ export interface DbService {
   company_id: string;
   packages?: ServicePackages; // JSONB
   gallery?: string[]; // Array of image URLs
+  faq?: { question: string; answer: string; }[]; // JSONB
 }
 
 export interface DbPortfolioItem {
@@ -176,6 +177,7 @@ export interface Service {
   duration?: string;
   packages?: ServicePackages;
   gallery?: string[];
+  faq?: { question: string; answer: string; }[];
 }
 
 export interface PortfolioItem {
