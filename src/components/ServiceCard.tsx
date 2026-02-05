@@ -30,6 +30,8 @@ const ServiceCard: React.FC<ServiceCardProps> = ({ service, onRequestQuote }) =>
               alt={service.title}
               className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
               loading="lazy"
+              width="800"
+              height="450"
             />
           </div>
         )}
@@ -44,6 +46,8 @@ const ServiceCard: React.FC<ServiceCardProps> = ({ service, onRequestQuote }) =>
                   alt={company.company_name}
                   className="w-full h-full object-cover"
                   loading="lazy"
+                  width="24"
+                  height="24"
                 />
               )}
             </div>

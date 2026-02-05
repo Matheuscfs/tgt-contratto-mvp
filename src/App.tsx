@@ -43,7 +43,7 @@ const App: React.FC = () => {
                       <ScrollToTop />
                       <div className="flex flex-col min-h-screen">
                         <Header />
-                        <main className="flex-grow">
+                        <main className="flex-grow" style={{ minHeight: 'calc(100vh - 80px - 200px)' }}>
                           <MainRoutes />
                         </main>
                         <Footer />
